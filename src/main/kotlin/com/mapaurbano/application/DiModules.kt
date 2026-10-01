@@ -28,6 +28,7 @@ import com.mapaurbano.infrastructure.database.repositories.SessionRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.TeamRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.UserRepositoryImpl
 import com.mapaurbano.media.application.GetImageUseCase
+import com.mapaurbano.media.application.ProcessImageUseCase
 import com.mapaurbano.media.domain.ImageRepository
 import com.mapaurbano.notifications.application.EventBus
 import com.mapaurbano.reports.application.ChangeReportPriorityUseCase
@@ -98,9 +99,11 @@ val applicationModule = module {
 
     // Media
     singleOf(::GetImageUseCase)
+    singleOf(::ProcessImageUseCase)
 
     // Statistics
     singleOf(::GetStatisticsUseCase)
 }
+
 
 

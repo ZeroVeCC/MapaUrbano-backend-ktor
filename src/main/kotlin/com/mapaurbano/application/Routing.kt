@@ -27,7 +27,6 @@ import io.ktor.server.plugins.swagger.swaggerUI
 
 fun Application.configureRouting() {
     routing {
-        staticFiles("/uploads", File("uploads"))
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
         healthRoutes()
 
@@ -57,6 +56,7 @@ fun Application.configureRouting() {
         }
     }
 }
+
 
 
 
