@@ -1,10 +1,13 @@
-package com.mapaurbano.application
+﻿package com.mapaurbano.application
 
 import com.mapaurbano.shared.api.ApiErrorDetail
 import com.mapaurbano.shared.api.respondApiError
 import com.mapaurbano.shared.api.respondInternalServerError
 import com.mapaurbano.shared.domain.*
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpHeaders
+import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -19,6 +22,18 @@ import kotlin.time.Duration.Companion.seconds
 
 fun Application.configurePlugins() {
     val applicationLogger = environment.log
+
+
+    install(CORS) {
+        allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Patch)
+        allowMethod(HttpMethod.Delete)
+        allowHeader(HttpHeaders.Authorization)
+        allowHeader(HttpHeaders.ContentType)
+        allowHost("localhost:3000")
+        allowHost("localhost:5173")
+    }
 
     install(ContentNegotiation) {
         json(
@@ -59,3 +74,4 @@ fun Application.configurePlugins() {
         masking = false
     }
 }
+

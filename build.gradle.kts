@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     application
     kotlin("jvm") version "2.4.10"
     kotlin("plugin.serialization") version "2.4.10"
@@ -38,8 +38,9 @@ dependencies {
     implementation("io.ktor:ktor-server-rate-limit")
     implementation("io.ktor:ktor-server-sessions")
     implementation("io.ktor:ktor-server-csrf")
+    implementation("io.ktor:ktor-server-swagger")
 
-    // Database – Exposed ORM + connection pool
+    // Database â€“ Exposed ORM + connection pool
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
@@ -54,7 +55,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion")
 
-    // Security – password hashing
+    // Security â€“ password hashing
     implementation("at.favre.lib:bcrypt:0.10.2")
 
     // Logging

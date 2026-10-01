@@ -1,4 +1,4 @@
-package com.mapaurbano.application
+﻿package com.mapaurbano.application
 
 import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.ratelimit.RateLimitName
@@ -21,9 +21,11 @@ import com.mapaurbano.users.api.userRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.server.plugins.swagger.swaggerUI
 
 fun Application.configureRouting() {
     routing {
+        swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
         healthRoutes()
 
         route("/api/v1") {
@@ -52,3 +54,4 @@ fun Application.configureRouting() {
         }
     }
 }
+
