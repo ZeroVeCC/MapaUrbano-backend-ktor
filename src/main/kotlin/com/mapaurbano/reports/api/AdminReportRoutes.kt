@@ -1,4 +1,4 @@
-package com.mapaurbano.reports.api
+﻿package com.mapaurbano.reports.api
 
 import com.mapaurbano.application.AdminSession
 import com.mapaurbano.reports.application.ChangeReportPriorityUseCase
@@ -39,14 +39,14 @@ fun Route.adminReportRoutes() {
             val session = call.principal<AdminSession>()
                 ?: return@patch call.respond(HttpStatusCode.Unauthorized)
 
-            changeReportStatusUseCase.execute(
+            val updatedReport = changeReportStatusUseCase.execute(
                 reportId = id,
                 newStatusString = request.status,
                 version = request.version,
                 note = request.note,
                 adminUserId = session.userId
             )
-            call.respond(HttpStatusCode.NoContent)
+            call.respond(HttpStatusCode.OK, updatedReport)
         }
 
         patch("/{id}/priority") {
@@ -77,3 +77,4 @@ fun Route.adminReportRoutes() {
         }
     }
 }
+

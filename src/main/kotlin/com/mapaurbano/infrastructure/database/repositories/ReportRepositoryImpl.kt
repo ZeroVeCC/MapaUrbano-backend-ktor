@@ -3,6 +3,7 @@
 import com.mapaurbano.infrastructure.database.tables.GeoPoint
 import com.mapaurbano.infrastructure.database.tables.GeographyPointColumnType
 import com.mapaurbano.infrastructure.database.tables.ReportsTable
+import com.mapaurbano.infrastructure.database.tables.ReportStatusHistoryTable
 import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportRepository
@@ -108,15 +109,29 @@ class ReportRepositoryImpl : ReportRepository {
         report
     }
 
-    override suspend fun updateStatus(id: String, status: ReportStatus, version: Long): Boolean = newSuspendedTransaction(Dispatchers.IO) {
-        val uuid = try { UUID.fromString(id) } catch (_: Exception) { return@newSuspendedTransaction false }
+        override suspend fun updateStatus(id: String, oldStatus: ReportStatus, newStatus: ReportStatus, version: Long, adminUserId: String, note: String?): Boolean = newSuspendedTransaction(Dispatchers.IO) {
+        val uuid = try { java.util.UUID.fromString(id) } catch (_: Exception) { return@newSuspendedTransaction false }
+        val adminUuid = try { java.util.UUID.fromString(adminUserId) } catch (_: Exception) { return@newSuspendedTransaction false }
+        
         val updatedRows = ReportsTable.update({
             (ReportsTable.id eq uuid) and (ReportsTable.version eq version)
         }) {
-            it[ReportsTable.status] = status
+            it[ReportsTable.status] = newStatus
             it[ReportsTable.version] = version + 1
             it[ReportsTable.updatedAt] = Instant.now()
         }
+        
+        if (updatedRows > 0) {
+            ReportStatusHistoryTable.insert {
+                it[ReportStatusHistoryTable.reportId] = uuid
+                it[ReportStatusHistoryTable.changedBy] = adminUuid
+                it[ReportStatusHistoryTable.fromStatus] = oldStatus
+                it[ReportStatusHistoryTable.toStatus] = newStatus
+                it[ReportStatusHistoryTable.note] = note
+                it[ReportStatusHistoryTable.changedAt] = Instant.now()
+            }
+        }
+        
         updatedRows > 0
     }
 
@@ -162,5 +177,7 @@ class ReportRepositoryImpl : ReportRepository {
         )
     }
 }
+
+
 
 
