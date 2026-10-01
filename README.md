@@ -1,60 +1,52 @@
-# Backend Ktor
+﻿# Mapa Urbano - Backend Ktor
 
-Base ejecutable del monolito modular de Mapa Urbano. Están creados el proyecto Gradle, los módulos, el registro de rutas y las migraciones de base de datos. Siguen pendientes las reglas de negocio, la autenticación y los repositorios que conectarán la API con la persistencia.
+Este repositorio contiene el backend independiente (standalone) del proyecto Mapa Urbano, originalmente extraido del monorepo principal.
 
-El esquema ya dispone de migraciones Flyway y pruebas de integración PostgreSQL/PostGIS.
-La conexión de los casos de uso a la base sigue pendiente. Ver [operación de la base](../database/README.md)
-para configurar el entorno y ejecutar `./gradlew migrateDatabase` antes del despliegue.
+## 🏗 Arquitectura y Tecnologias
 
-## Tecnologías
+El backend esta desarrollado completamente en Kotlin y utiliza las siguientes tecnologias:
+- **Framework Web:** [Ktor](https://ktor.io/) (Netty engine)
+- **Inyeccion de Dependencias:** [Koin](https://insert-koin.io/)
+- **Base de Datos y ORM:** PostgreSQL + PostGIS (datos geoespaciales) con [JetBrains Exposed](https://github.com/JetBrains/Exposed)
+- **Migraciones:** [Flyway](https://flywaydb.org/)
+- **Conexiones:** HikariCP
+- **Autenticacion y Seguridad:** Sesiones y Bearer Tokens de Ktor, encriptacion con BCrypt.
 
-- JDK 21.
-- Kotlin 2.4.10.
-- Ktor 3.5.1 con Netty.
-- Kotlinx Serialization para JSON.
-- Gradle Wrapper 9.5.0.
+## 📦 Proceso de Extraccion
 
-## Ejecutar
+Este backend fue extraido de un monorepo que contenia la Web y la App. Los cambios principales durante la extraccion fueron:
+1. **Independencia de Migraciones:** Los scripts SQL de Flyway (anteriormente externos) fueron movidos nativamente a src/main/resources/db/migration. Flyway los detecta y ejecuta automaticamente al iniciar la aplicacion.
+2. **Desacoplamiento:** Se eliminaron las referencias a tareas externas en el uild.gradle.kts. El proyecto ahora compila de manera 100% independiente.
 
-Desde este directorio:
+## ⚙️ Configuracion y Variables de Entorno
 
-```bash
-./gradlew test
-./gradlew run
-```
+El servidor esta configurado a traves del archivo src/main/resources/application.conf. Soporta configuracion local por defecto, pero se adapta a produccion mediante las siguientes variables de entorno:
 
-`./gradlew check` ejecuta además las pruebas de base con Testcontainers y requiere Docker.
-Para ejecutarlas por separado: `./gradlew integrationTest`.
+- PORT: Puerto donde corre el servidor Ktor (por defecto 8080).
+- DATABASE_JDBC_URL: URL de la base de datos (ej. jdbc:postgresql://localhost:5432/mapa_urbano).
+- DATABASE_USER: Usuario de PostgreSQL (por defecto postgres).
+- DATABASE_PASSWORD: Contrasena de PostgreSQL.
+- SESSION_SECRET: Secreto para firmar las sesiones de Ktor.
 
-El servidor escucha por defecto en `http://localhost:8080`. Puede cambiarse el puerto mediante la variable de entorno `PORT`.
+## 🚀 Como ejecutar el proyecto
 
-## Estado actual de la API
+### Prerrequisitos
+- JDK 21
+- PostgreSQL con la extension PostGIS habilitada (CREATE EXTENSION postgis;).
 
-- `GET /health/live` responde `200`: el proceso está activo.
-- `GET /health/ready` responde `503` hasta que la base de datos sea configurada.
-- Las rutas HTTP de negocio están registradas y responden `501 NOT_IMPLEMENTED` con el formato de error común.
-- Los dos canales WebSocket están registrados, pero cierran indicando que aún no están disponibles.
+### Comandos de Gradle
+El proyecto incluye el wrapper de Gradle (gradlew), por lo que no necesitas tener Gradle instalado globalmente.
 
-Una respuesta `501` es intencional: permite validar rutas e integración sin simular que una función incompleta ya está operativa.
-
-## Organización
-
-Cada módulo mantiene su entrada HTTP dentro de un paquete `api`. Al implementar la lógica se agregarán, según corresponda, las capas `application`, `domain` e `infrastructure` dentro del mismo módulo.
-
-```text
-src/main/kotlin/com/mapaurbano/
-├── application/       # Arranque, plugins y registro central de rutas
-├── auth/api/           # Sesiones administrativas
-├── users/api/          # Registro, sesión y reportes propios del vecino
-├── reports/api/        # Reportes públicos y administrativos
-├── categories/api/     # Categorías públicas y administrativas
-├── media/api/          # Entrega y futura carga de imágenes
-├── assignments/api/    # Delegación, equipos y responsables
-├── statistics/api/     # Métricas del panel
-├── audit/api/          # Historial de acciones administrativas
-├── notifications/api/  # WebSocket público y administrativo
-├── health/api/         # Liveness y readiness
-└── shared/api/         # Contratos HTTP compartidos
-```
-
-Los contratos funcionales están documentados en [arquitectura](../docs/01-arquitectura.md), [módulos backend](../docs/02-modulos-backend.md) y [API y tiempo real](../docs/04-api-y-tiempo-real.md).
+- **Compilar el proyecto:**
+  `ash
+  ./gradlew build
+  `
+- **Ejecutar pruebas unitarias:**
+  `ash
+  ./gradlew test
+  `
+- **Correr el servidor localmente:**
+  `ash
+  ./gradlew run
+  `
+  *(Nota: Al ejecutar, la aplicacion intentara conectarse a la base de datos y ejecutara automaticamente las migraciones pendientes de Flyway antes de levantar el servidor).*
