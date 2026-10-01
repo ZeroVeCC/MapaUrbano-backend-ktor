@@ -1,0 +1,71 @@
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.fleet/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+!**/.env.example
+local.properties
+*.jks
+*.keystore
+google-services.json
+service-account*.json
+secrets/
+
+# Node.js / Angular
+**/node_modules/
+**/.angular/
+**/dist/
+**/.cache/
+**/coverage/
+**/.nyc_output/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# Kotlin / Gradle / Android
+.gradle/
+**/.gradle/
+.kotlin/
+**/.kotlin/
+**/build/
+**/bin/
+**/out/
+*.class
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Base de datos y servicios locales
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+pgdata/
+postgres-data/
+minio-data/
+
+# Logs, temporales y artefactos generados
+*.log
+tmp/
+temp/
+output/
+test-results/
+playwright-report/
+
+# La documentación versionada es Markdown; los PDF quedan locales
+*.pdf
