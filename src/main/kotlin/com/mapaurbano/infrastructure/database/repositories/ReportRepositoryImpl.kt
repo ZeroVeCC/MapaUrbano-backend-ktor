@@ -97,7 +97,6 @@ class ReportRepositoryImpl : ReportRepository {
             it[priority] = report.priority
             it[title] = report.title
             it[description] = report.description
-            it[imageUrl] = report.imageUrl
             it[location] = GeoPoint(latitude = report.latitude, longitude = report.longitude)
             it[dueAt] = report.dueAt
             it[trackingCodeHash] = report.trackingCodeHash
@@ -152,7 +151,6 @@ class ReportRepositoryImpl : ReportRepository {
             priority = this[ReportsTable.priority],
             title = this[ReportsTable.title],
             description = this[ReportsTable.description],
-            imageUrl = this[ReportsTable.imageUrl],
             latitude = pt.latitude,
             longitude = pt.longitude,
             dueAt = this[ReportsTable.dueAt],
@@ -164,4 +162,5 @@ class ReportRepositoryImpl : ReportRepository {
         )
     }
 }
+
 

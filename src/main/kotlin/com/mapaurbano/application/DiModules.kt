@@ -103,3 +103,4 @@ val applicationModule = module {
     singleOf(::GetStatisticsUseCase)
 }
 
+

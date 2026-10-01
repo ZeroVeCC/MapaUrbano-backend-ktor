@@ -3,13 +3,14 @@
 import com.mapaurbano.reports.domain.SubmissionMode
 import com.mapaurbano.reports.dto.TrackingCodeRequest
 import com.mapaurbano.reports.application.CreateReportUseCase
-import com.mapaurbano.media.application.StorageService
+import com.mapaurbano.media.application.ProcessImageUseCase
 import com.mapaurbano.reports.application.GetPublicReportUseCase
 import com.mapaurbano.reports.application.GetReportByTrackingCodeUseCase
 import com.mapaurbano.reports.application.ListPublicReportsUseCase
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
+import io.ktor.http.content.streamProvider
 import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
@@ -23,7 +24,7 @@ import org.koin.ktor.ext.inject
 
 fun Route.publicReportRoutes() {
     val createReportUseCase by inject<CreateReportUseCase>()
-    val storageService by inject<StorageService>()
+    val processImageUseCase by inject<ProcessImageUseCase>()
     val listPublicReportsUseCase by inject<ListPublicReportsUseCase>()
     val getPublicReportUseCase by inject<GetPublicReportUseCase>()
     val getReportByTrackingCodeUseCase by inject<GetReportByTrackingCodeUseCase>()
@@ -51,7 +52,9 @@ fun Route.publicReportRoutes() {
             var lat = 0.0
             var lng = 0.0
             var mode = SubmissionMode.ANONYMOUS
-            var imageUrl: String? = null
+            var imageBytes: ByteArray? = null
+            var imageContentType: String? = null
+            var imageFileName: String? = null
 
             val multipart = call.receiveMultipart()
             multipart.forEachPart { part ->
@@ -72,7 +75,9 @@ fun Route.publicReportRoutes() {
                     }
                     is PartData.FileItem -> {
                         if (part.name == "image") {
-                            imageUrl = storageService.saveImage(part)
+                            imageBytes = part.streamProvider().readBytes()
+                            imageContentType = part.contentType?.toString() ?: "image/jpeg"
+                            imageFileName = part.originalFileName
                         }
                     }
                     else -> {}
@@ -82,8 +87,17 @@ fun Route.publicReportRoutes() {
 
             val userId = call.principal<UserIdPrincipal>()?.name
             val response = createReportUseCase.execute(
-                title, description, categorySlug, lat, lng, mode, userId, imageUrl
+                title, description, categorySlug, lat, lng, mode, userId
             )
+
+            if (imageBytes != null && imageContentType != null) {
+                processImageUseCase.execute(
+                    reportId = response.id,
+                    data = imageBytes!!,
+                    contentType = imageContentType!!,
+                    originalFilename = imageFileName
+                )
+            }
             call.respond(HttpStatusCode.Created, response)
         }
 
@@ -100,4 +114,10 @@ fun Route.publicReportRoutes() {
         call.respond(HttpStatusCode.OK, response)
     }
 }
+
+
+
+
+
+
 

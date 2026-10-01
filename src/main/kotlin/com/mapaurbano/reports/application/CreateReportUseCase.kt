@@ -27,7 +27,6 @@ class CreateReportUseCase(
         longitude: Double,
         submissionMode: SubmissionMode,
         userId: String?,
-        imageUrl: String? = null
         // TODO: image parameter when processing media
     ): CreateReportResponse {
         val errors = mutableListOf<FieldError>()
@@ -72,7 +71,6 @@ class CreateReportUseCase(
             description = description,
             latitude = latitude,
             longitude = longitude,
-            imageUrl = imageUrl,
             trackingCodeHash = trackingCodeHash,
             trackingCodeHint = trackingCodeHint,
             createdAt = now,
@@ -98,4 +96,5 @@ class CreateReportUseCase(
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).uppercase().take(10)
     }
 }
+
 

@@ -30,7 +30,6 @@ data class Report(
     val description: String,
     val latitude: Double,
     val longitude: Double,
-    val imageUrl: String? = null,
     val dueAt: Instant? = null,
     val trackingCodeHash: ByteArray? = null,
     val trackingCodeHint: String? = null,
@@ -66,7 +65,6 @@ data class Report(
         if (description != other.description) return false
         if (latitude != other.latitude) return false
         if (longitude != other.longitude) return false
-        if (imageUrl != other.imageUrl) return false
         if (dueAt != other.dueAt) return false
         if (trackingCodeHash != null) {
             if (other.trackingCodeHash == null) return false
@@ -91,7 +89,6 @@ data class Report(
         result = 31 * result + description.hashCode()
         result = 31 * result + latitude.hashCode()
         result = 31 * result + longitude.hashCode()
-        result = 31 * result + (imageUrl?.hashCode() ?: 0)
         result = 31 * result + (dueAt?.hashCode() ?: 0)
         result = 31 * result + (trackingCodeHash?.contentHashCode() ?: 0)
         result = 31 * result + (trackingCodeHint?.hashCode() ?: 0)
@@ -102,4 +99,5 @@ data class Report(
         return result
     }
 }
+
 
