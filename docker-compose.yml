@@ -1,0 +1,38 @@
+﻿version: '3.8'
+
+services:
+  database:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: mapaurbano-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mapa_urbano
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mapa_urbano"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: mapaurbano-backend
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      # La URL de JDBC usa 'database' que es el nombre del servicio en la red de Docker
+      DATABASE_JDBC_URL: jdbc:postgresql://database:5432/mapa_urbano
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      SESSION_SECRET: development-secret-key-change-in-production
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  pgdata:
