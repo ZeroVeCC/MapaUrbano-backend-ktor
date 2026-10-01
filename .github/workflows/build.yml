@@ -12,6 +12,7 @@ jobs:
   build-and-test:
     name: Build and Run Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -29,10 +30,11 @@ jobs:
 
       - name: Build with Gradle
         # Ejecuta compilacion y todas las pruebas (unitarias y de integracion con Testcontainers)
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --no-daemon --info --stacktrace
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: always() # siempre publicar el reporte, incluso si fallan los tests
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
+
