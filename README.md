@@ -50,3 +50,8 @@ El proyecto incluye el wrapper de Gradle (gradlew), por lo que no necesitas tene
   ./gradlew run
   `
   *(Nota: Al ejecutar, la aplicacion intentara conectarse a la base de datos y ejecutara automaticamente las migraciones pendientes de Flyway antes de levantar el servidor).*
+
+## 📚 Documentacion Detallada
+
+Para conocer a fondo el estado actual del repositorio, los cambios recientes, la arquitectura exacta y como continuar colaborando, por favor lee: **[Estado Actual y Decisiones Arquitectonicas](docs/ESTADO_ACTUAL_Y_DECISIONES.md)**.
+
