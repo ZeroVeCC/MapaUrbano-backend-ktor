@@ -1,4 +1,4 @@
-package com.mapaurbano.reports.application
+﻿package com.mapaurbano.reports.application
 
 import com.mapaurbano.categories.domain.CategoryRepository
 import com.mapaurbano.reports.domain.Report
@@ -27,22 +27,23 @@ class CreateReportUseCase(
         longitude: Double,
         submissionMode: SubmissionMode,
         userId: String?,
+        imageUrl: String? = null
         // TODO: image parameter when processing media
     ): CreateReportResponse {
         val errors = mutableListOf<FieldError>()
         
-        if (title.isBlank()) errors.add(FieldError("title", "El título es obligatorio"))
-        if (description.isBlank()) errors.add(FieldError("description", "La descripción es obligatoria"))
-        if (latitude < -90 || latitude > 90) errors.add(FieldError("latitude", "Latitud inválida"))
-        if (longitude < -180 || longitude > 180) errors.add(FieldError("longitude", "Longitud inválida"))
+        if (title.isBlank()) errors.add(FieldError("title", "El tÃ­tulo es obligatorio"))
+        if (description.isBlank()) errors.add(FieldError("description", "La descripciÃ³n es obligatoria"))
+        if (latitude < -90 || latitude > 90) errors.add(FieldError("latitude", "Latitud invÃ¡lida"))
+        if (longitude < -180 || longitude > 180) errors.add(FieldError("longitude", "Longitud invÃ¡lida"))
         
         val category = categoryRepository.findBySlug(categorySlug)
         if (category == null) {
-            errors.add(FieldError("categorySlug", "Categoría no encontrada"))
+            errors.add(FieldError("categorySlug", "CategorÃ­a no encontrada"))
         }
 
         if (submissionMode == SubmissionMode.ACCOUNT && userId == null) {
-            errors.add(FieldError("submissionMode", "Se requiere sesión para el modo cuenta"))
+            errors.add(FieldError("submissionMode", "Se requiere sesiÃ³n para el modo cuenta"))
         }
 
         if (errors.isNotEmpty()) {
@@ -71,6 +72,7 @@ class CreateReportUseCase(
             description = description,
             latitude = latitude,
             longitude = longitude,
+            imageUrl = imageUrl,
             trackingCodeHash = trackingCodeHash,
             trackingCodeHint = trackingCodeHint,
             createdAt = now,
@@ -78,14 +80,14 @@ class CreateReportUseCase(
         )
 
         val createdReport = reportRepository.create(report)
-        // TODO: Guardar imagen si viene adjunta y publicar evento de creación
+        // TODO: Guardar imagen si viene adjunta y publicar evento de creaciÃ³n
 
         return CreateReportResponse(
             id = createdReport.id,
             submissionMode = createdReport.submissionMode.name,
             status = createdReport.status.name,
             createdAt = createdReport.createdAt.toString(),
-            trackingCode = trackingCode // Solo se devuelve al crearlo anónimamente
+            trackingCode = trackingCode // Solo se devuelve al crearlo anÃ³nimamente
         )
     }
 
@@ -96,3 +98,4 @@ class CreateReportUseCase(
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).uppercase().take(10)
     }
 }
+

@@ -1,4 +1,4 @@
-package com.mapaurbano.reports.domain
+﻿package com.mapaurbano.reports.domain
 
 import java.time.Instant
 
@@ -30,6 +30,7 @@ data class Report(
     val description: String,
     val latitude: Double,
     val longitude: Double,
+    val imageUrl: String? = null,
     val dueAt: Instant? = null,
     val trackingCodeHash: ByteArray? = null,
     val trackingCodeHint: String? = null,
@@ -39,12 +40,12 @@ data class Report(
     val deletedAt: Instant? = null,
 ) {
     init {
-        require(title.isNotBlank()) { "El título no puede estar vacío" }
-        require(description.isNotBlank()) { "La descripción no puede estar vacía" }
+        require(title.isNotBlank()) { "El tÃ­tulo no puede estar vacÃ­o" }
+        require(description.isNotBlank()) { "La descripciÃ³n no puede estar vacÃ­a" }
         require(
             (userId != null && trackingCodeHash == null && trackingCodeHint == null) ||
             (userId == null && trackingCodeHash != null && trackingCodeHint != null)
-        ) { "Un reporte debe ser registrado por un usuario o tener un código anónimo." }
+        ) { "Un reporte debe ser registrado por un usuario o tener un cÃ³digo anÃ³nimo." }
     }
 
     val submissionMode: SubmissionMode
@@ -65,6 +66,7 @@ data class Report(
         if (description != other.description) return false
         if (latitude != other.latitude) return false
         if (longitude != other.longitude) return false
+        if (imageUrl != other.imageUrl) return false
         if (dueAt != other.dueAt) return false
         if (trackingCodeHash != null) {
             if (other.trackingCodeHash == null) return false
@@ -89,6 +91,7 @@ data class Report(
         result = 31 * result + description.hashCode()
         result = 31 * result + latitude.hashCode()
         result = 31 * result + longitude.hashCode()
+        result = 31 * result + (imageUrl?.hashCode() ?: 0)
         result = 31 * result + (dueAt?.hashCode() ?: 0)
         result = 31 * result + (trackingCodeHash?.contentHashCode() ?: 0)
         result = 31 * result + (trackingCodeHint?.hashCode() ?: 0)
@@ -99,3 +102,4 @@ data class Report(
         return result
     }
 }
+

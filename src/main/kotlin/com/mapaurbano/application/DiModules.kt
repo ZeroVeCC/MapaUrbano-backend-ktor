@@ -1,4 +1,4 @@
-package com.mapaurbano.application
+﻿package com.mapaurbano.application
 
 import com.mapaurbano.assignments.application.AssignReportUseCase
 import com.mapaurbano.assignments.application.CreateTeamUseCase
@@ -102,3 +102,4 @@ val applicationModule = module {
     // Statistics
     singleOf(::GetStatisticsUseCase)
 }
+

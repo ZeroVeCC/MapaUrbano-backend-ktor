@@ -21,10 +21,13 @@ import com.mapaurbano.users.api.userRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.server.http.content.staticFiles
+import java.io.File
 import io.ktor.server.plugins.swagger.swaggerUI
 
 fun Application.configureRouting() {
     routing {
+        staticFiles("/uploads", File("uploads"))
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
         healthRoutes()
 
@@ -54,4 +57,5 @@ fun Application.configureRouting() {
         }
     }
 }
+
 

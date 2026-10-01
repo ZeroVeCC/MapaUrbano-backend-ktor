@@ -1,4 +1,4 @@
-package com.mapaurbano.infrastructure.database.tables
+﻿package com.mapaurbano.infrastructure.database.tables
 
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportStatus
@@ -68,6 +68,7 @@ object ReportsTable : UUIDTable("reports") {
     val priority = pgEnum<ReportPriority>("priority", "report_priority").default(ReportPriority.MEDIUM)
     val title = varchar("title", 150)
     val description = text("description")
+    val imageUrl = varchar("image_url", 255).nullable()
     val location = geoPoint("location")
     val dueAt = timestamp("due_at").nullable()
     val trackingCodeHash = binary("tracking_code_hash").nullable().uniqueIndex()
@@ -129,3 +130,5 @@ object AuditEventsTable : UUIDTable("audit_events") {
     val sourceIp = varchar("source_ip", 45).nullable() // inet stored as string
     val occurredAt = timestamp("occurred_at")
 }
+
+
