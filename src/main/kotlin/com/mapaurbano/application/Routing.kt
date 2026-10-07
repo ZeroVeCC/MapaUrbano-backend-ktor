@@ -34,7 +34,9 @@ fun Application.configureRouting() {
             publicCategoryRoutes()
             
             rateLimit(RateLimitName("public")) {
-                publicReportRoutes()
+                authenticate("user-bearer", optional = true) {
+                    publicReportRoutes()
+                }
                 publicImageRoutes()
             }
             

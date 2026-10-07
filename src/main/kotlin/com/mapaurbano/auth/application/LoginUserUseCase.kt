@@ -5,6 +5,7 @@ import com.mapaurbano.auth.dto.LoginRequest
 import com.mapaurbano.auth.dto.LoginResponse
 import com.mapaurbano.shared.domain.AuthenticationException
 import com.mapaurbano.users.domain.SessionRepository
+import com.mapaurbano.users.domain.Dni
 import com.mapaurbano.users.domain.UserRepository
 import com.mapaurbano.users.domain.UserSession
 import java.security.MessageDigest
@@ -19,11 +20,16 @@ class LoginUserUseCase(
     private val sessionRepository: SessionRepository
 ) {
     suspend fun execute(request: LoginRequest): LoginResponse {
-        val user = userRepository.findByEmail(request.email)
+        val dni = Dni.normalize(request.dni)
+            ?: throw AuthenticationException("Usuario o contraseña incorrectos")
+        if (request.password.toByteArray(Charsets.UTF_8).size > 72) {
+            throw AuthenticationException("Usuario o contraseña incorrectos")
+        }
+        val user = userRepository.findByDni(dni)
             ?: throw AuthenticationException("Usuario o contraseña incorrectos")
 
-        if (!user.isActive) {
-            throw AuthenticationException("El usuario está desactivado")
+        if (!user.isActive || user.deletedAt != null) {
+            throw AuthenticationException("Usuario o contraseña incorrectos")
         }
 
         val result = BCrypt.verifyer().verify(request.password.toCharArray(), user.passwordHash)

@@ -29,7 +29,7 @@ class CreateReportUseCaseTest {
             reports.add(report)
             return report
         }
-        override suspend fun updateStatus(id: String, status: ReportStatus, version: Long): Boolean = true
+        override suspend fun updateStatus(id: String, oldStatus: ReportStatus, newStatus: ReportStatus, version: Long, adminUserId: String, note: String?): Boolean = true
         override suspend fun updatePriority(id: String, priority: ReportPriority, dueAt: Instant?, version: Long): Boolean = true
         override suspend fun softDelete(id: String): Boolean = true
     }
@@ -47,7 +47,7 @@ class CreateReportUseCaseTest {
     private val useCase = CreateReportUseCase(reportRepository, categoryRepository)
 
     @Test
-    fun `modo cuenta sin sesion deberia fallar`() = runBlocking {
+    fun `modo cuenta sin sesion deberia fallar`(): Unit = runBlocking {
         val ex = assertThrows<ValidationException> {
             useCase.execute(
                 title = "Bache",
@@ -63,7 +63,7 @@ class CreateReportUseCaseTest {
     }
 
     @Test
-    fun `modo anonimo genera tracking code`() = runBlocking {
+    fun `modo anonimo genera tracking code`(): Unit = runBlocking {
         val response = useCase.execute(
             title = "Bache",
             description = "Grande",

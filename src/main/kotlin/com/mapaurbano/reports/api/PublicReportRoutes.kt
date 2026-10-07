@@ -11,7 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.http.content.streamProvider
-import io.ktor.server.auth.UserIdPrincipal
+import com.mapaurbano.auth.application.UserPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveMultipart
@@ -85,7 +85,7 @@ fun Route.publicReportRoutes() {
                 part.dispose()
             }
 
-            val userId = call.principal<UserIdPrincipal>()?.name
+            val userId = call.principal<UserPrincipal>()?.userId
             val response = createReportUseCase.execute(
                 title, description, categorySlug, lat, lng, mode, userId
             )

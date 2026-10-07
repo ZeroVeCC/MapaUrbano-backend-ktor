@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class RegisterRequest(
-    val email: String,
+    val dni: String,
     val displayName: String,
     val password: String,
 )
@@ -19,6 +19,6 @@ data class RegisterResponse(
 data class UserProfileResponse(
     val id: String,
     val displayName: String,
-    val email: String,
+    val dni: String?,
     val createdAt: String,
 )

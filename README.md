@@ -2,6 +2,10 @@
 
 Este repositorio contiene el backend independiente (standalone) del proyecto Mapa Urbano, originalmente extraido del monorepo principal.
 
+**Actualización:** registro/login de vecinos por **DNI + contraseña**. Ver [contrato, migración y pruebas](docs/AUTENTICACION_DNI.md). El informe del 1 de octubre es histórico; esta actualización documenta los cambios posteriores.
+
+La [revisión de integración de los tres repositorios](docs/INTEGRACION_REPOSITORIOS_2026-10-06.md) identifica las ramas actuales de Android/web, diferencias de contrato y pruebas pendientes antes de conectarlos.
+
 ## 🏗 Arquitectura y Tecnologias
 
 El backend esta desarrollado completamente en Kotlin y utiliza las siguientes tecnologias:

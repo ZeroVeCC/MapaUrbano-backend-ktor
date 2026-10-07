@@ -32,6 +32,7 @@ fun Application.configurePlugins() {
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
         allowHost("localhost:3000")
+        allowHost("localhost:4200")
         allowHost("localhost:5173")
     }
 
@@ -50,6 +51,9 @@ fun Application.configurePlugins() {
     }
 
     install(StatusPages) {
+        exception<io.ktor.server.plugins.BadRequestException> { call, _ ->
+            call.respondApiError(HttpStatusCode.BadRequest, "VALIDATION_ERROR", "Revisa el formato y los campos enviados.")
+        }
         exception<DomainException> { call, cause ->
             val status = when (cause) {
                 is NotFoundException -> HttpStatusCode.NotFound

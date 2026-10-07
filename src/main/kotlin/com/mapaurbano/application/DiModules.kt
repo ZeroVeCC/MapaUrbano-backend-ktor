@@ -9,6 +9,7 @@ import com.mapaurbano.assignments.domain.AssignmentRepository
 import com.mapaurbano.assignments.domain.TeamRepository
 import com.mapaurbano.audit.domain.AuditRepository
 import com.mapaurbano.auth.application.LoginAdminUseCase
+import com.mapaurbano.auth.application.AuthenticateUserUseCase
 import com.mapaurbano.auth.application.LoginUserUseCase
 import com.mapaurbano.auth.application.LogoutAdminUseCase
 import com.mapaurbano.auth.application.LogoutUserUseCase
@@ -67,6 +68,7 @@ val applicationModule = module {
 
     // Auth
     singleOf(::LoginUserUseCase)
+    singleOf(::AuthenticateUserUseCase)
     singleOf(::LoginAdminUseCase)
     singleOf(::LogoutUserUseCase)
     singleOf(::LogoutAdminUseCase)

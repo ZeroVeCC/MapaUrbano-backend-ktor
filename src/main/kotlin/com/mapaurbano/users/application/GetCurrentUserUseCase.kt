@@ -14,7 +14,7 @@ class GetCurrentUserUseCase(
         return UserProfileResponse(
             id = user.id,
             displayName = user.displayName,
-            email = user.email,
+            dni = user.dni,
             createdAt = user.createdAt.toString()
         )
     }

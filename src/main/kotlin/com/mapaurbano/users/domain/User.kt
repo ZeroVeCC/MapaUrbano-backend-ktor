@@ -4,7 +4,7 @@ import java.time.Instant
 
 data class User(
     val id: String,
-    val email: String,
+    val dni: String?,
     val displayName: String,
     val passwordHash: String,
     val isActive: Boolean = true,

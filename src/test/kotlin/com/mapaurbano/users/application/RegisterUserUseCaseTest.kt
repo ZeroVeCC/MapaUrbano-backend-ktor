@@ -16,7 +16,7 @@ class RegisterUserUseCaseTest {
     class FakeUserRepository : UserRepository {
         private val users = mutableListOf<User>()
         override suspend fun findById(id: String): User? = users.find { it.id == id }
-        override suspend fun findByEmail(email: String): User? = users.find { it.email == email }
+        override suspend fun findByDni(dni: String): User? = users.find { it.dni == dni }
         override suspend fun create(user: User): User {
             users.add(user)
             return user
@@ -33,9 +33,9 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
-    fun `registro exitoso`() = runBlocking {
+    fun `registro exitoso`(): Unit = runBlocking {
         val useCase = RegisterUserUseCase(FakeUserRepository(), FakeSessionRepository())
-        val request = RegisterRequest(email = "test@test.com", displayName = "Juan", password = "password123")
+        val request = RegisterRequest(dni = "30123456", displayName = "Juan", password = "password123")
         
         val response = useCase.execute(request)
         assertNotNull(response.id)
@@ -43,12 +43,12 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
-    fun `email duplicado falla`() = runBlocking {
+    fun `dni duplicado falla`(): Unit = runBlocking {
         val repo = FakeUserRepository()
-        repo.create(User("1", "test@test.com", "Test", "hash", true, createdAt = Instant.now(), updatedAt = Instant.now()))
+        repo.create(User("1", "30123456", "Test", "hash", true, createdAt = Instant.now(), updatedAt = Instant.now()))
         val useCase = RegisterUserUseCase(repo, FakeSessionRepository())
         
-        val request = RegisterRequest(email = "test@test.com", displayName = "Juan", password = "password123")
+        val request = RegisterRequest(dni = "30123456", displayName = "Juan", password = "password123")
         assertThrows<ConflictException> {
             useCase.execute(request)
         }

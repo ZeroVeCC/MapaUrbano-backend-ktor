@@ -37,7 +37,7 @@ class DatabaseMigrationsTest {
         @JvmStatic
         fun migrateEmptyDatabase() {
             // The PostGIS image preinstalls extensions. An extension-only schema must be accepted.
-            assertEquals(2, flyway().migrate().migrationsExecuted)
+            assertEquals(3, flyway().migrate().migrationsExecuted)
             flyway().validate()
         }
     }
@@ -54,6 +54,47 @@ class DatabaseMigrationsTest {
     fun rollback() {
         connection.rollback()
         connection.close()
+    }
+
+    @Test
+    fun `DNI permits registration without email and enforces canonical uniqueness`() {
+        val id = UUID.randomUUID()
+        execute("INSERT INTO users (id, dni, display_name, password_hash) VALUES (?, '30123456', 'Vecino', 'test-only-hash')", id)
+        assertEquals("30123456", scalar("SELECT dni FROM users WHERE id = ?", id))
+        assertEquals(null, scalar("SELECT email FROM users WHERE id = ?", id))
+        rejects("23505") { execute("INSERT INTO users (dni, display_name, password_hash) VALUES ('30123456', 'Otro', 'hash')") }
+        for (invalid in listOf("", "123456", "123456789", "30.123.456", "abcdefgh", "00000000")) {
+            rejects("23514") { execute("UPDATE users SET dni = ? WHERE id = ?", invalid, id) }
+        }
+        rejects("23514") { execute("UPDATE users SET dni = NULL WHERE id = ?", id) }
+    }
+
+    @Test
+    fun `upgrade from V2 preserves legacy users and supports verified DNI assignment`() {
+        val url = newDatabase("dni_upgrade_test")
+        val old = Flyway.configure().configuration(flyway(url).configuration).target("2").load()
+        assertEquals(2, old.migrate().migrationsExecuted)
+        val id = UUID.randomUUID()
+        DriverManager.getConnection(url, postgres.username, postgres.password).use { db ->
+            db.prepareStatement("INSERT INTO users (id, email, display_name, password_hash) VALUES (?, 'legacy@example.com', 'Legacy', 'preserved-hash')").use {
+                it.setObject(1, id)
+                it.executeUpdate()
+            }
+        }
+        assertEquals(1, flyway(url).migrate().migrationsExecuted)
+        DriverManager.getConnection(url, postgres.username, postgres.password).use { db ->
+            db.createStatement().use { statement ->
+                statement.executeQuery("SELECT email, dni, password_hash FROM users").use {
+                    assertTrue(it.next())
+                    assertEquals("legacy@example.com", it.getString("email"))
+                    assertEquals(null, it.getString("dni"))
+                    assertEquals("preserved-hash", it.getString("password_hash"))
+                }
+                assertEquals(1, statement.executeUpdate("UPDATE users SET dni = '30123456' WHERE email = 'legacy@example.com'"))
+            }
+        }
+        flyway(url).validate()
+        assertEquals(0, flyway(url).migrate().migrationsExecuted)
     }
 
     @Test
@@ -77,7 +118,7 @@ class DatabaseMigrationsTest {
             assertEquals(0, flyway().migrate().migrationsExecuted)
             flyway().validate()
             assertEquals(id.toString(), scalar("SELECT id::text FROM reports WHERE id = ?", id))
-            assertEquals("2", scalar("SELECT count(*) FROM flyway_schema_history WHERE success"))
+            assertEquals("3", scalar("SELECT count(*) FROM flyway_schema_history WHERE success"))
             assertFailsWith<FlywayException> { flyway().clean() }
         } finally {
             execute("DELETE FROM reports WHERE id = ?", id)
@@ -206,7 +247,7 @@ class DatabaseMigrationsTest {
     @Test
     fun `failed migration rolls back without leaving partial tables`() {
         val url = newDatabase("rollback_test")
-        assertEquals(2, flyway(url).migrate().migrationsExecuted)
+        assertEquals(3, flyway(url).migrate().migrationsExecuted)
         val failing = Flyway.configure().configuration(flyway(url).configuration)
             .locations("classpath:db/migration", "classpath:db/failing").load()
         assertFailsWith<FlywayException> { failing.migrate() }

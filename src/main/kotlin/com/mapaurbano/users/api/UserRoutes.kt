@@ -10,7 +10,7 @@ import com.mapaurbano.auth.application.LoginUserUseCase
 import com.mapaurbano.auth.application.LogoutUserUseCase
 import com.mapaurbano.users.dto.RegisterRequest
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.UserIdPrincipal
+import com.mapaurbano.auth.application.UserPrincipal
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
@@ -45,9 +45,9 @@ fun Route.userRoutes() {
 
         authenticate("user-bearer") {
             post("/logout") {
-                val token = call.principal<UserIdPrincipal>()?.name
-                if (token != null) {
-                    logoutUserUseCase.execute(token)
+                val sessionId = call.principal<UserPrincipal>()?.sessionId
+                if (sessionId != null) {
+                    logoutUserUseCase.execute(sessionId)
                     call.respond(HttpStatusCode.NoContent)
                 } else {
                     call.respond(HttpStatusCode.Unauthorized)
@@ -55,21 +55,21 @@ fun Route.userRoutes() {
             }
 
             get("/me") {
-                val userId = call.principal<UserIdPrincipal>()?.name
+                val userId = call.principal<UserPrincipal>()?.userId
                     ?: return@get call.respond(HttpStatusCode.Unauthorized)
                 val response = getCurrentUserUseCase.execute(userId)
                 call.respond(HttpStatusCode.OK, response)
             }
 
             delete("/me") {
-                val userId = call.principal<UserIdPrincipal>()?.name
+                val userId = call.principal<UserPrincipal>()?.userId
                     ?: return@delete call.respond(HttpStatusCode.Unauthorized)
                 deactivateUserUseCase.execute(userId)
                 call.respond(HttpStatusCode.NoContent)
             }
 
             get("/me/reports") {
-                val userId = call.principal<UserIdPrincipal>()?.name
+                val userId = call.principal<UserPrincipal>()?.userId
                     ?: return@get call.respond(HttpStatusCode.Unauthorized)
                 val cursor = call.request.queryParameters["cursor"]
                 val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 20
