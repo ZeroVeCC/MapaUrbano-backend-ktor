@@ -25,7 +25,8 @@ object AdminUsersTable : UUIDTable("admin_users") {
 }
 
 object UsersTable : UUIDTable("users") {
-    val email = varchar("email", 254).uniqueIndex("users_email_lower_uq")
+    val email = varchar("email", 254).nullable()
+    val dni = varchar("dni", 8).nullable()
     val displayName = varchar("display_name", 100)
     val passwordHash = text("password_hash")
     val isActive = bool("is_active").default(true)

@@ -1,6 +1,6 @@
 ﻿# Estado Actual, Cambios y Decisiones Arquitectonicas
 
-Este documento sirve como registro principal de todo el trabajo realizado en este repositorio y como punto de entrada de lectura (contexto) para cualquier miembro del equipo o asistente de Inteligencia Artificial que revise el proyecto.
+Este documento conserva el registro histórico de la extracción. Para el diagnóstico posterior ver [revisión del 1 de octubre](REVISION_Y_PLAN_2026-10-01.md) y para el cambio a DNI ver [autenticación ciudadana](AUTENTICACION_DNI.md). Las referencias de este documento a StorageService, uploads, imageUrl y su migración V3 fueron revertidas; las fotos actuales se guardan en BYTEA y la nueva V3 agrega DNI.
 
 ## 1. Contexto y Origen
 

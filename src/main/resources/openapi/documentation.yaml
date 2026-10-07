@@ -1,6 +1,117 @@
 ﻿openapi: "3.0.0"
 info:
-  version: 1.0.0
+  version: 1.1.0
   title: Mapa Urbano API
-  description: API backend para Mapa Urbano
-paths: {}
+  description: Contrato de autenticación ciudadana por DNI. Otros módulos pendientes de documentación.
+paths:
+  /api/v1/users/register:
+    post:
+      summary: Registrar vecino y crear sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '201':
+          description: Cuenta y sesión creadas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, token]
+                properties:
+                  id: {type: string, format: uuid}
+                  token: {type: string}
+        '400': {description: Campos o formato inválidos}
+        '409': {description: DNI ya registrado - DNI_ALREADY_REGISTERED}
+  /api/v1/users/login:
+    post:
+      summary: Login con DNI y contraseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Sesión creada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [userId, token]
+                properties:
+                  userId: {type: string, format: uuid}
+                  token: {type: string}
+        '400': {description: JSON inválido}
+        '401': {description: Credenciales incorrectas o cuenta no disponible}
+  /api/v1/users/me:
+    get:
+      summary: Consultar únicamente el perfil propio
+      security: [{userBearer: []}]
+      responses:
+        '200':
+          description: Perfil privado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, displayName, dni, createdAt]
+                properties:
+                  id: {type: string, format: uuid}
+                  displayName: {type: string}
+                  dni: {type: string, pattern: '^[0-9]{7,8}$'}
+                  createdAt: {type: string, format: date-time}
+        '401': {description: Sesión ausente, inválida, vencida o revocada}
+    delete:
+      summary: Desactivar cuenta propia y revocar sus sesiones
+      security: [{userBearer: []}]
+      responses:
+        '204': {description: Cuenta desactivada}
+        '401': {description: Sesión ausente o inválida}
+  /api/v1/users/logout:
+    post:
+      summary: Revocar la sesión actual
+      security: [{userBearer: []}]
+      responses:
+        '204': {description: Sesión revocada}
+        '401': {description: Sesión ausente o inválida}
+components:
+  securitySchemes:
+    userBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Opaque token
+      description: Token opaco de 30 días. No es un DNI ni un UUID de usuario.
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [dni, password]
+      properties:
+        dni:
+          type: string
+          example: '30123456'
+          description: 7 u 8 dígitos; acepta puntos agrupados y espacios exteriores. Rechaza todos ceros.
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          description: Máximo 72 bytes UTF-8.
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [dni, displayName, password]
+      properties:
+        dni:
+          type: string
+          example: '30.123.456'
+          description: Se normaliza a 7 u 8 dígitos y se almacena como texto único. Rechaza todos ceros.
+        displayName: {type: string, minLength: 1, maxLength: 100}
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 8
+          description: Máximo 72 bytes UTF-8 (límite BCrypt).

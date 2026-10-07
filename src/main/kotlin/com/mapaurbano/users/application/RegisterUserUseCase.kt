@@ -5,6 +5,7 @@ import com.mapaurbano.shared.domain.ConflictException
 import com.mapaurbano.shared.domain.FieldError
 import com.mapaurbano.shared.domain.ValidationException
 import com.mapaurbano.users.domain.SessionRepository
+import com.mapaurbano.users.domain.Dni
 import com.mapaurbano.users.domain.User
 import com.mapaurbano.users.domain.UserRepository
 import com.mapaurbano.users.domain.UserSession
@@ -22,28 +23,29 @@ class RegisterUserUseCase(
     private val sessionRepository: SessionRepository
 ) {
     suspend fun execute(request: RegisterRequest): RegisterResponse {
-        val email = request.email.trim().lowercase()
+        val dni = Dni.normalize(request.dni)
         val displayName = request.displayName.trim()
         val password = request.password
 
         val errors = mutableListOf<FieldError>()
-        if (email.isBlank() || !email.contains("@")) {
-            errors.add(FieldError("email", "Formato de correo inválido"))
+        if (dni == null) {
+            errors.add(FieldError("dni", "El DNI debe tener 7 u 8 dígitos"))
         }
-        if (displayName.isBlank()) {
-            errors.add(FieldError("displayName", "El nombre visible es obligatorio"))
+        if (displayName.isBlank() || displayName.length > 100) {
+            errors.add(FieldError("displayName", "El nombre debe tener entre 1 y 100 caracteres"))
         }
-        if (password.length < 8) {
-            errors.add(FieldError("password", "La contraseña debe tener al menos 8 caracteres"))
+        if (password.length < 8 || password.toByteArray(Charsets.UTF_8).size > 72) {
+            errors.add(FieldError("password", "La contraseña debe tener al menos 8 caracteres y hasta 72 bytes UTF-8"))
         }
         
         if (errors.isNotEmpty()) {
             throw ValidationException(details = errors)
         }
 
-        val existingUser = userRepository.findByEmail(email)
+        val normalizedDni = requireNotNull(dni)
+        val existingUser = userRepository.findByDni(normalizedDni)
         if (existingUser != null) {
-            throw ConflictException("El correo ya está registrado", "EMAIL_ALREADY_REGISTERED")
+            throw ConflictException("El DNI ya está registrado", "DNI_ALREADY_REGISTERED")
         }
 
         val passwordHash = BCrypt.withDefaults().hashToString(12, password.toCharArray())
@@ -51,7 +53,7 @@ class RegisterUserUseCase(
         val now = Instant.now()
         val user = User(
             id = UUID.randomUUID().toString(),
-            email = email,
+            dni = normalizedDni,
             displayName = displayName,
             passwordHash = passwordHash,
             createdAt = now,

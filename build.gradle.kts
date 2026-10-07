@@ -49,7 +49,7 @@ dependencies {
     implementation("org.postgresql:postgresql:42.7.13")
 
     // Dependency Injection
-    val koinVersion = "3.5.6"
+    val koinVersion = "4.2.0"
     implementation("io.insert-koin:koin-ktor:$koinVersion")
     implementation("io.insert-koin:koin-logger-slf4j:$koinVersion")
     implementation("org.flywaydb:flyway-core:$flywayVersion")

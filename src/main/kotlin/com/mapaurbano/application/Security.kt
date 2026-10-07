@@ -3,14 +3,16 @@ package com.mapaurbano.application
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.sessions.*
+import com.mapaurbano.auth.application.AuthenticateUserUseCase
+import org.koin.ktor.ext.inject
 
 fun Application.configureSecurity() {
+    val authenticateUser by inject<AuthenticateUserUseCase>()
     install(Authentication) {
         bearer("user-bearer") {
             realm = "Access to user API"
             authenticate { tokenCredential ->
-                // TODO: Validate token in repository
-                UserIdPrincipal(tokenCredential.token)
+                authenticateUser.execute(tokenCredential.token)
             }
         }
         

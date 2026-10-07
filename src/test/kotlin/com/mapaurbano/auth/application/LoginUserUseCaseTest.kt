@@ -16,7 +16,7 @@ import java.time.Instant
 class LoginUserUseCaseTest {
     class FakeUserRepository(private val user: User?) : UserRepository {
         override suspend fun findById(id: String): User? = if (user?.id == id) user else null
-        override suspend fun findByEmail(email: String): User? = if (user?.email == email) user else null
+        override suspend fun findByDni(dni: String): User? = if (user?.dni == dni) user else null
         override suspend fun create(user: User): User = user
         override suspend fun deactivate(id: String) {}
     }
@@ -30,31 +30,31 @@ class LoginUserUseCaseTest {
     }
 
     @Test
-    fun `credenciales correctas devuelven token`() = runBlocking {
+    fun `credenciales correctas devuelven token`(): Unit = runBlocking {
         val password = "mypassword"
         val hash = BCrypt.withDefaults().hashToString(12, password.toCharArray())
         val user = User(
-            id = "u-1", email = "test@test.com", displayName = "Test", passwordHash = hash,
+            id = "u-1", dni = "30123456", displayName = "Test", passwordHash = hash,
             isActive = true, createdAt = Instant.now(), updatedAt = Instant.now()
         )
         val useCase = LoginUserUseCase(FakeUserRepository(user), FakeSessionRepository())
 
-        val response = useCase.execute(LoginRequest("test@test.com", password))
+        val response = useCase.execute(LoginRequest("30123456", password))
         assertNotNull(response.token)
     }
 
     @Test
-    fun `cuenta desactivada falla`() = runBlocking {
+    fun `cuenta desactivada falla`(): Unit = runBlocking {
         val password = "mypassword"
         val hash = BCrypt.withDefaults().hashToString(12, password.toCharArray())
         val user = User(
-            id = "u-1", email = "test@test.com", displayName = "Test", passwordHash = hash,
+            id = "u-1", dni = "30123456", displayName = "Test", passwordHash = hash,
             isActive = false, createdAt = Instant.now(), updatedAt = Instant.now()
         )
         val useCase = LoginUserUseCase(FakeUserRepository(user), FakeSessionRepository())
 
         assertThrows<AuthenticationException> {
-            useCase.execute(LoginRequest("test@test.com", password))
+            useCase.execute(LoginRequest("30123456", password))
         }
     }
 }

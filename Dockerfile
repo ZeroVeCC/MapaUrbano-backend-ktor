@@ -3,7 +3,7 @@ FROM gradle:8.7-jdk21-alpine AS build
 COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
 # Compilamos el Fat JAR omitiendo los tests para acelerar la imagen
-RUN ./gradlew buildFatJar --no-daemon -x test
+RUN chmod +x gradlew && ./gradlew buildFatJar --no-daemon -x test
 
 # Etapa de ejecucion
 FROM eclipse-temurin:21-jre-alpine

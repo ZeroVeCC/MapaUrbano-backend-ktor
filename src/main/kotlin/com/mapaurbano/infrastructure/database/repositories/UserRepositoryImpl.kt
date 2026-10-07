@@ -12,6 +12,9 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
 import java.util.UUID
+import com.mapaurbano.shared.domain.ConflictException
+import org.jetbrains.exposed.exceptions.ExposedSQLException
+import org.postgresql.util.PSQLException
 
 class UserRepositoryImpl : UserRepository {
     override suspend fun findById(id: String): User? = newSuspendedTransaction(Dispatchers.IO) {
@@ -19,23 +22,31 @@ class UserRepositoryImpl : UserRepository {
         UsersTable.selectAll().where { UsersTable.id eq uuid }.singleOrNull()?.toUser()
     }
 
-    override suspend fun findByEmail(email: String): User? = newSuspendedTransaction(Dispatchers.IO) {
-        UsersTable.selectAll().where { UsersTable.email eq email }.singleOrNull()?.toUser()
+    override suspend fun findByDni(dni: String): User? = newSuspendedTransaction(Dispatchers.IO) {
+        UsersTable.selectAll().where { UsersTable.dni eq dni }.singleOrNull()?.toUser()
     }
 
-    override suspend fun create(user: User): User = newSuspendedTransaction(Dispatchers.IO) {
-        UsersTable.insert {
-            it[id] = UUID.fromString(user.id)
-            it[email] = user.email
-            it[displayName] = user.displayName
-            it[passwordHash] = user.passwordHash
-            it[isActive] = user.isActive
-            it[emailVerifiedAt] = user.emailVerifiedAt
-            it[lastLoginAt] = user.lastLoginAt
-            it[createdAt] = user.createdAt
-            it[updatedAt] = user.updatedAt
+    override suspend fun create(user: User): User = try {
+        newSuspendedTransaction(Dispatchers.IO) {
+            UsersTable.insert {
+                it[id] = UUID.fromString(user.id)
+                it[dni] = user.dni
+                it[displayName] = user.displayName
+                it[passwordHash] = user.passwordHash
+                it[isActive] = user.isActive
+                it[emailVerifiedAt] = user.emailVerifiedAt
+                it[lastLoginAt] = user.lastLoginAt
+                it[createdAt] = user.createdAt
+                it[updatedAt] = user.updatedAt
+            }
+            user
         }
-        user
+    } catch (error: ExposedSQLException) {
+        val postgres = error.cause as? PSQLException
+        if (postgres?.sqlState == "23505" && postgres.serverErrorMessage?.constraint == "users_dni_uq") {
+            throw ConflictException("El DNI ya está registrado", "DNI_ALREADY_REGISTERED")
+        }
+        throw error
     }
 
     override suspend fun deactivate(id: String): Unit = newSuspendedTransaction(Dispatchers.IO) {
@@ -48,13 +59,14 @@ class UserRepositoryImpl : UserRepository {
 
     private fun ResultRow.toUser(): User = User(
         id = this[UsersTable.id].value.toString(),
-        email = this[UsersTable.email],
+        dni = this[UsersTable.dni],
         displayName = this[UsersTable.displayName],
         passwordHash = this[UsersTable.passwordHash],
         isActive = this[UsersTable.isActive],
         emailVerifiedAt = this[UsersTable.emailVerifiedAt],
         lastLoginAt = this[UsersTable.lastLoginAt],
         createdAt = this[UsersTable.createdAt],
-        updatedAt = this[UsersTable.updatedAt]
+        updatedAt = this[UsersTable.updatedAt],
+        deletedAt = this[UsersTable.deletedAt]
     )
 }
