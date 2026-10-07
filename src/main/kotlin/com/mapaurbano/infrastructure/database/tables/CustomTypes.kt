@@ -51,12 +51,16 @@ class GeographyPointColumnType : ColumnType<GeoPoint>() {
     }
 
     override fun setParameter(stmt: PreparedStatementApi, index: Int, value: Any?) {
-        val obj = PGobject()
-        obj.type = "geography"
-        if (value is GeoPoint) {
-            obj.value = value.toEWKT()
+        if (value == null) {
+            super.setParameter(stmt, index, null)
+            return
         }
-        stmt[index] = obj
+        val parameter = when (value) {
+            is PGobject -> value
+            is GeoPoint -> notNullValueToDB(value)
+            else -> error("Unsupported geography parameter: ${value::class.qualifiedName}")
+        }
+        stmt[index] = parameter
     }
 
     override fun nonNullValueToString(value: GeoPoint): String {
@@ -97,10 +101,21 @@ class PgEnum<T : Enum<T>>(
     }
 
     override fun setParameter(stmt: PreparedStatementApi, index: Int, value: Any?) {
-        val obj = PGobject()
-        obj.type = pgTypeName
-        obj.value = (value as? Enum<*>)?.name?.lowercase()
-        stmt[index] = obj
+        if (value == null) {
+            super.setParameter(stmt, index, null)
+            return
+        }
+        val parameter = when (value) {
+            is PGobject -> value
+            else -> {
+                require(enumClass.isInstance(value)) {
+                    "Unsupported $pgTypeName parameter: ${value::class.qualifiedName}"
+                }
+                @Suppress("UNCHECKED_CAST")
+                notNullValueToDB(value as T)
+            }
+        }
+        stmt[index] = parameter
     }
 
     override fun nonNullValueToString(value: T): String {

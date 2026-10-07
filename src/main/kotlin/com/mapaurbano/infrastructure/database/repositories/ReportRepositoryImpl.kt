@@ -23,6 +23,8 @@ import org.jetbrains.exposed.sql.intParam
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.exceptions.ExposedSQLException
+import com.mapaurbano.shared.domain.PersistenceException
 import java.time.Instant
 import java.util.UUID
 
@@ -89,24 +91,32 @@ class ReportRepositoryImpl : ReportRepository {
             .map { it.toReport() }
     }
 
-    override suspend fun create(report: Report): Report = newSuspendedTransaction(Dispatchers.IO) {
-        ReportsTable.insert {
-            it[id] = UUID.fromString(report.id)
-            it[categoryId] = UUID.fromString(report.categoryId)
-            it[userId] = report.userId?.let { uid -> UUID.fromString(uid) }
-            it[status] = report.status
-            it[priority] = report.priority
-            it[title] = report.title
-            it[description] = report.description
-            it[location] = GeoPoint(latitude = report.latitude, longitude = report.longitude)
-            it[dueAt] = report.dueAt
-            it[trackingCodeHash] = report.trackingCodeHash
-            it[trackingCodeHint] = report.trackingCodeHint
-            it[version] = report.version
-            it[createdAt] = report.createdAt
-            it[updatedAt] = report.updatedAt
+    override suspend fun create(report: Report): Report = try {
+        newSuspendedTransaction(Dispatchers.IO) {
+            ReportsTable.insert {
+                it[id] = UUID.fromString(report.id)
+                it[categoryId] = UUID.fromString(report.categoryId)
+                it[userId] = report.userId?.let { uid -> UUID.fromString(uid) }
+                it[status] = report.status
+                it[priority] = report.priority
+                it[title] = report.title
+                it[description] = report.description
+                it[location] = GeoPoint(latitude = report.latitude, longitude = report.longitude)
+                it[dueAt] = report.dueAt
+                it[trackingCodeHash] = report.trackingCodeHash
+                it[trackingCodeHint] = report.trackingCodeHint
+                it[version] = report.version
+                it[createdAt] = report.createdAt
+                it[updatedAt] = report.updatedAt
+            }
+            report
         }
-        report
+    } catch (cause: ExposedSQLException) {
+        throw PersistenceException(
+            message = "No pudimos guardar el reporte. Intentá nuevamente.",
+            errorCode = "REPORT_PERSISTENCE_ERROR",
+            cause = cause,
+        )
     }
 
         override suspend fun updateStatus(id: String, oldStatus: ReportStatus, newStatus: ReportStatus, version: Long, adminUserId: String, note: String?): Boolean = newSuspendedTransaction(Dispatchers.IO) {

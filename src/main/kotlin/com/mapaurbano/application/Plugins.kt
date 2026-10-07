@@ -17,6 +17,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.plugins.statuspages.exception
 import io.ktor.server.websocket.WebSockets
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.slf4j.event.Level
 import kotlin.time.Duration.Companion.seconds
 
@@ -61,9 +62,21 @@ fun Application.configurePlugins() {
                 is ConflictException -> HttpStatusCode.Conflict
                 is AuthenticationException -> HttpStatusCode.Unauthorized
                 is AuthorizationException -> HttpStatusCode.Forbidden
+                is PersistenceException -> HttpStatusCode.InternalServerError
+            }
+            if (cause is PersistenceException) {
+                applicationLogger.error("Controlled persistence failure [${cause.errorCode}]", cause)
             }
             val details = cause.details.map { ApiErrorDetail(it.field, it.reason) }
             call.respondApiError(status, cause.errorCode, cause.message, details)
+        }
+        exception<ExposedSQLException> { call, cause ->
+            applicationLogger.error("Unhandled database persistence failure", cause)
+            call.respondApiError(
+                HttpStatusCode.InternalServerError,
+                "PERSISTENCE_ERROR",
+                "No pudimos guardar los datos. Intentá nuevamente.",
+            )
         }
         exception<Throwable> { call, cause ->
             applicationLogger.error("Unhandled request failure", cause)

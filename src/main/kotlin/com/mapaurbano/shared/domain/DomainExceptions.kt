@@ -8,7 +8,8 @@ sealed class DomainException(
     val errorCode: String,
     override val message: String,
     val details: List<FieldError> = emptyList(),
-) : RuntimeException(message)
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 data class FieldError(
     val field: String? = null,
@@ -42,3 +43,10 @@ class AuthenticationException(
 class AuthorizationException(
     message: String = "No tenés permiso para realizar esta acción.",
 ) : DomainException("FORBIDDEN", message)
+
+/** Fallo controlado al escribir datos persistentes → 500 con código estable. */
+class PersistenceException(
+    message: String = "No pudimos guardar los datos. Intentá nuevamente.",
+    errorCode: String = "PERSISTENCE_ERROR",
+    cause: Throwable? = null,
+) : DomainException(errorCode, message, cause = cause)

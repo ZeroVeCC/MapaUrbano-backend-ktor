@@ -1,11 +1,18 @@
 package com.mapaurbano.database
 
+import com.mapaurbano.infrastructure.database.repositories.ReportRepositoryImpl
+import com.mapaurbano.reports.domain.Report
+import com.mapaurbano.reports.domain.ReportPriority
+import com.mapaurbano.reports.domain.ReportStatus
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
+import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.runBlocking
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.FlywayException
+import org.jetbrains.exposed.sql.Database
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -154,6 +161,27 @@ class DatabaseMigrationsTest {
         rejects("23514") { execute("UPDATE reports SET title = '   ' WHERE id = ?", anonymous) }
         rejects("23514") { execute("UPDATE reports SET description = '' WHERE id = ?", anonymous) }
         rejects("23503") { execute("UPDATE reports SET category_id = ? WHERE id = ?", UUID.randomUUID(), anonymous) }
+    }
+
+    @Test
+    fun `repository persists status priority and location for anonymous report`(): Unit = runBlocking {
+        val report = reportDomain(userId = null)
+
+        verifyRepositoryPersistence(report)
+    }
+
+    @Test
+    fun `repository persists status priority and location for account report`(): Unit = runBlocking {
+        val userId = user()
+        connection.commit()
+        val report = reportDomain(userId = userId.toString())
+
+        try {
+            verifyRepositoryPersistence(report)
+        } finally {
+            execute("DELETE FROM users WHERE id = ?", userId)
+            connection.commit()
+        }
     }
 
     @Test
@@ -322,6 +350,46 @@ class DatabaseMigrationsTest {
             id, user, if (user == null) id.toString().toByteArray() else null, if (user == null) "test" else null,
         )
         return id
+    }
+
+    private fun reportDomain(userId: String?): Report {
+        val id = UUID.randomUUID()
+        val now = Instant.now()
+        return Report(
+            id = id.toString(),
+            categoryId = scalar("SELECT id::text FROM categories WHERE slug = 'bache'")!!,
+            userId = userId,
+            status = ReportStatus.PENDING,
+            priority = ReportPriority.MEDIUM,
+            title = "Bache desde Android",
+            description = "Prueba de persistencia con Exposed",
+            latitude = -32.8895,
+            longitude = -68.8458,
+            trackingCodeHash = if (userId == null) id.toString().toByteArray() else null,
+            trackingCodeHint = if (userId == null) "test****" else null,
+            createdAt = now,
+            updatedAt = now,
+        )
+    }
+
+    private suspend fun verifyRepositoryPersistence(report: Report) {
+        Database.connect(
+            url = postgres.jdbcUrl,
+            driver = "org.postgresql.Driver",
+            user = postgres.username,
+            password = postgres.password,
+        )
+
+        try {
+            ReportRepositoryImpl().create(report)
+            assertEquals("pending", scalar("SELECT status::text FROM reports WHERE id = ?", UUID.fromString(report.id)))
+            assertEquals("medium", scalar("SELECT priority::text FROM reports WHERE id = ?", UUID.fromString(report.id)))
+            assertEquals(report.latitude, scalar("SELECT ST_Y(location::geometry) FROM reports WHERE id = ?", UUID.fromString(report.id))!!.toDouble(), 0.000001)
+            assertEquals(report.longitude, scalar("SELECT ST_X(location::geometry) FROM reports WHERE id = ?", UUID.fromString(report.id))!!.toDouble(), 0.000001)
+        } finally {
+            execute("DELETE FROM reports WHERE id = ?", UUID.fromString(report.id))
+            connection.commit()
+        }
     }
 
     private fun image(report: UUID) {
