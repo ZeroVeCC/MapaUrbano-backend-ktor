@@ -4,6 +4,8 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.sessions.*
 import com.mapaurbano.auth.application.AuthenticateUserUseCase
+import com.mapaurbano.shared.api.respondApiError
+import io.ktor.http.HttpStatusCode
 import org.koin.ktor.ext.inject
 
 fun Application.configureSecurity() {
@@ -22,7 +24,11 @@ fun Application.configureSecurity() {
                 session
             }
             challenge {
-                // TODO: Handle unauthorized admin access
+                call.respondApiError(
+                    HttpStatusCode.Unauthorized,
+                    "AUTHENTICATION_REQUIRED",
+                    "Se requiere una sesión administrativa válida.",
+                )
             }
         }
     }

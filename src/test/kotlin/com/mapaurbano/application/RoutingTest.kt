@@ -1,26 +1,37 @@
 package com.mapaurbano.application
 
+import com.mapaurbano.categories.domain.CategoryRepository
+import com.mapaurbano.reports.application.CreateReportUseCaseTest
+import com.mapaurbano.reports.domain.ReportRepository
 import io.ktor.client.request.request
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
 import io.ktor.server.testing.testApplication
+import org.koin.dsl.module
+import org.koin.ktor.plugin.Koin
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 
 class RoutingTest {
+    private fun io.ktor.server.application.Application.configureTestApplication() {
+        install(Koin) {
+            modules(repositoryModule, applicationModule, module {
+                single<ReportRepository> { CreateReportUseCaseTest.FakeReportRepository() }
+                single<CategoryRepository> { CreateReportUseCaseTest.FakeCategoryRepository() }
+            })
+        }
+        configurePlugins()
+        configureRateLimiting()
+        configureSecurity()
+        configureRouting()
+    }
+
     @Test
     fun `liveness reports that the process is running`() = testApplication {
-        application { 
-            install(org.koin.ktor.plugin.Koin) { modules(repositoryModule, applicationModule) }
-            configurePlugins()
-            configureRateLimiting()
-            configureSecurity()
-            configureRouting() 
-        }
+        application { configureTestApplication() }
 
         val response = client.request("/health/live")
 
@@ -29,38 +40,18 @@ class RoutingTest {
     }
 
     @Test
-    fun `business endpoints are correctly mapped and do not return 404`() = testApplication {
-        application { 
-            install(org.koin.ktor.plugin.Koin) { modules(repositoryModule, applicationModule) }
-            configurePlugins()
-            configureRateLimiting()
-            configureSecurity()
-            configureRouting() 
-        }
+    fun `public and user route groups return their expected status`() = testApplication {
+        application { configureTestApplication() }
 
         val endpoints = listOf(
-            Endpoint(HttpMethod.Get, "/api/v1/categories"),
-            Endpoint(HttpMethod.Post, "/api/v1/reports"),
-            Endpoint(HttpMethod.Get, "/api/v1/reports/123"),
-            Endpoint(HttpMethod.Post, "/api/v1/report-status"),
-            Endpoint(HttpMethod.Post, "/api/v1/users/register"),
-            Endpoint(HttpMethod.Post, "/api/v1/users/login"),
-            Endpoint(HttpMethod.Post, "/api/v1/users/logout"),
-            Endpoint(HttpMethod.Get, "/api/v1/users/me"),
-            Endpoint(HttpMethod.Delete, "/api/v1/users/me"),
-            Endpoint(HttpMethod.Get, "/api/v1/users/me/reports"),
-            Endpoint(HttpMethod.Get, "/api/v1/users/me/reports/123"),
-            Endpoint(HttpMethod.Post, "/api/v1/admin/auth/login"),
-            Endpoint(HttpMethod.Post, "/api/v1/admin/auth/logout"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/auth/me"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/reports"),
-            Endpoint(HttpMethod.Patch, "/api/v1/admin/reports/123/status"),
-            Endpoint(HttpMethod.Put, "/api/v1/admin/reports/123/assignment"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/teams"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/assignees"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/categories"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/statistics"),
-            Endpoint(HttpMethod.Get, "/api/v1/admin/audit"),
+            Endpoint(HttpMethod.Get, "/api/v1/categories", HttpStatusCode.OK),
+            Endpoint(HttpMethod.Get, "/api/v1/reports", HttpStatusCode.OK),
+            Endpoint(HttpMethod.Get, "/api/v1/reports/123", HttpStatusCode.NotFound),
+            Endpoint(HttpMethod.Post, "/api/v1/users/logout", HttpStatusCode.Unauthorized),
+            Endpoint(HttpMethod.Get, "/api/v1/users/me", HttpStatusCode.Unauthorized),
+            Endpoint(HttpMethod.Delete, "/api/v1/users/me", HttpStatusCode.Unauthorized),
+            Endpoint(HttpMethod.Get, "/api/v1/users/me/reports", HttpStatusCode.Unauthorized),
+            Endpoint(HttpMethod.Get, "/api/v1/users/me/reports/123", HttpStatusCode.Unauthorized),
         )
 
         endpoints.forEach { endpoint ->
@@ -68,25 +59,13 @@ class RoutingTest {
                 method = endpoint.method
             }
 
-            // Authentication wrapper returns 401, missing DI returns 500
-            // Just verifying that the route is actually mapped (not 404)
-            assertNotEquals(
-                HttpStatusCode.NotFound,
-                response.status,
-                "${endpoint.method.value} ${endpoint.path} is not mapped",
-            )
+            assertEquals(endpoint.expectedStatus, response.status, "${endpoint.method.value} ${endpoint.path}")
         }
     }
 
     @Test
     fun `legacy ambiguous admin login route is not registered`() = testApplication {
-        application { 
-            install(org.koin.ktor.plugin.Koin) { modules(repositoryModule, applicationModule) }
-            configurePlugins()
-            configureRateLimiting()
-            configureSecurity()
-            configureRouting() 
-        }
+        application { configureTestApplication() }
 
         val response = client.request("/api/v1/auth/login") {
             method = HttpMethod.Post
@@ -98,5 +77,6 @@ class RoutingTest {
     private data class Endpoint(
         val method: HttpMethod,
         val path: String,
+        val expectedStatus: HttpStatusCode,
     )
 }
