@@ -70,8 +70,11 @@ class DatabaseMigrationsTest {
         assertEquals("30123456", scalar("SELECT dni FROM users WHERE id = ?", id))
         assertEquals(null, scalar("SELECT email FROM users WHERE id = ?", id))
         rejects("23505") { execute("INSERT INTO users (dni, display_name, password_hash) VALUES ('30123456', 'Otro', 'hash')") }
-        for (invalid in listOf("", "123456", "123456789", "30.123.456", "abcdefgh", "00000000")) {
+        for (invalid in listOf("", "123456", "abcdefgh", "00000000")) {
             rejects("23514") { execute("UPDATE users SET dni = ? WHERE id = ?", invalid, id) }
+        }
+        for (tooLong in listOf("123456789", "30.123.456")) {
+            rejects("22001") { execute("UPDATE users SET dni = ? WHERE id = ?", tooLong, id) }
         }
         rejects("23514") { execute("UPDATE users SET dni = NULL WHERE id = ?", id) }
     }
