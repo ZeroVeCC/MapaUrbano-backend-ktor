@@ -1,5 +1,8 @@
 package com.mapaurbano.infrastructure.database.tables
 
+import com.mapaurbano.shared.domain.PersistenceException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Table
@@ -23,24 +26,84 @@ data class GeoPoint(val latitude: Double, val longitude: Double) {
 class GeographyPointColumnType : ColumnType<GeoPoint>() {
     override fun sqlType(): String = "geography(Point, 4326)"
 
-    override fun valueFromDB(value: Any): GeoPoint {
-        val text = when (value) {
-            is PGobject -> value.value ?: error("NULL geography value")
-            is String -> value
-            else -> value.toString()
+    override fun valueFromDB(value: Any): GeoPoint = try {
+        when (value) {
+            is GeoPoint -> value
+            is PGobject -> decodeText(value.value ?: error("NULL geography value"))
+            is String -> decodeText(value)
+            is ByteArray -> decodeWkb(value)
+            else -> error("Unsupported geography value type: ${value::class.qualifiedName}")
         }
-        // PostgreSQL returns hex WKB by default.  We ask ST_AsText via a raw
-        // query when we really need it, but for the common path we parse the
-        // EWKT / WKT that PostgreSQL can also return when cast.
-        // If the value starts with "POINT" it's WKT; otherwise it's hex WKB
-        // which we'll skip for now (the repo uses ST_X / ST_Y instead).
-        if (text.uppercase().startsWith("POINT")) {
-            // "POINT(lng lat)"
-            val coords = text.substringAfter("(").substringBefore(")").trim().split(" ")
-            return GeoPoint(latitude = coords[1].toDouble(), longitude = coords[0].toDouble())
+    } catch (cause: PersistenceException) {
+        throw cause
+    } catch (cause: Exception) {
+        throw PersistenceException(
+            message = "No pudimos interpretar la ubicación guardada.",
+            errorCode = "LOCATION_DECODING_ERROR",
+            cause = cause,
+        )
+    }
+
+    private fun decodeText(raw: String): GeoPoint {
+        val text = raw.trim()
+        val wkt = if (text.startsWith("SRID=", ignoreCase = true)) {
+            val separator = text.indexOf(';')
+            require(separator > 5) { "Invalid EWKT point" }
+            require(text.substring(5, separator).toInt() == 4326) { "Unexpected geography SRID" }
+            text.substring(separator + 1)
+        } else {
+            text
         }
-        // Fallback: return (0,0) — in practice the repo reads lat/lng via ST_X/ST_Y
-        return GeoPoint(0.0, 0.0)
+
+        POINT_PATTERN.matchEntire(wkt)?.let { match ->
+            return checkedPoint(
+                longitude = match.groupValues[1].toDouble(),
+                latitude = match.groupValues[2].toDouble(),
+            )
+        }
+
+        return decodeWkb(decodeHex(text))
+    }
+
+    private fun decodeWkb(bytes: ByteArray): GeoPoint {
+        require(bytes.size >= WKB_POINT_SIZE) { "WKB point is truncated" }
+        val buffer = ByteBuffer.wrap(bytes)
+        buffer.order(
+            when (buffer.get().toInt()) {
+                0 -> ByteOrder.BIG_ENDIAN
+                1 -> ByteOrder.LITTLE_ENDIAN
+                else -> error("Invalid WKB byte order")
+            },
+        )
+
+        val typeWord = buffer.int.toLong() and UINT_MASK
+        val geometryType = (typeWord and TYPE_MASK).toInt()
+        require(geometryType % ISO_DIMENSION_OFFSET == WKB_POINT_TYPE) { "WKB geometry is not a point" }
+
+        if (typeWord and EWKB_SRID_FLAG != 0L) {
+            require(buffer.remaining() >= Int.SIZE_BYTES + 2 * Double.SIZE_BYTES) { "EWKB point is truncated" }
+            require(buffer.int == 4326) { "Unexpected geography SRID" }
+        } else {
+            require(buffer.remaining() >= 2 * Double.SIZE_BYTES) { "WKB point is truncated" }
+        }
+
+        val longitude = buffer.double
+        val latitude = buffer.double
+        return checkedPoint(latitude = latitude, longitude = longitude)
+    }
+
+    private fun decodeHex(raw: String): ByteArray {
+        val hex = raw.removePrefix("\\x").removePrefix("0x")
+        require(hex.length % 2 == 0 && hex.matches(HEX_PATTERN)) { "Invalid hexadecimal WKB" }
+        return ByteArray(hex.length / 2) { index ->
+            hex.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+        }
+    }
+
+    private fun checkedPoint(latitude: Double, longitude: Double): GeoPoint {
+        require(latitude.isFinite() && latitude in -90.0..90.0) { "Invalid point latitude" }
+        require(longitude.isFinite() && longitude in -180.0..180.0) { "Invalid point longitude" }
+        return GeoPoint(latitude = latitude, longitude = longitude)
     }
 
     override fun notNullValueToDB(value: GeoPoint): Any {
@@ -65,6 +128,20 @@ class GeographyPointColumnType : ColumnType<GeoPoint>() {
 
     override fun nonNullValueToString(value: GeoPoint): String {
         return "'${value.toEWKT()}'::geography"
+    }
+
+    private companion object {
+        private const val WKB_POINT_SIZE = 1 + Int.SIZE_BYTES + 2 * Double.SIZE_BYTES
+        private const val WKB_POINT_TYPE = 1
+        private const val ISO_DIMENSION_OFFSET = 1000
+        private const val UINT_MASK = 0xFFFF_FFFFL
+        private const val TYPE_MASK = 0x0FFF_FFFFL
+        private const val EWKB_SRID_FLAG = 0x2000_0000L
+        private val HEX_PATTERN = Regex("[0-9a-fA-F]+")
+        private val POINT_PATTERN = Regex(
+            """POINT(?:\s+(?:Z|M|ZM))?\s*\(\s*([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\s+([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)(?:\s+[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?){0,2}\s*\)""",
+            RegexOption.IGNORE_CASE,
+        )
     }
 }
 

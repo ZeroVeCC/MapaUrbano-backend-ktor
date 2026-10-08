@@ -8,7 +8,9 @@ import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportRepository
 import com.mapaurbano.reports.domain.ReportStatus
+import com.mapaurbano.shared.domain.PersistenceException
 import kotlinx.coroutines.Dispatchers
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.BooleanColumnType
 import org.jetbrains.exposed.sql.CustomFunction
 import org.jetbrains.exposed.sql.ResultRow
@@ -23,8 +25,6 @@ import org.jetbrains.exposed.sql.intParam
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
-import org.jetbrains.exposed.exceptions.ExposedSQLException
-import com.mapaurbano.shared.domain.PersistenceException
 import java.time.Instant
 import java.util.UUID
 
@@ -61,18 +61,22 @@ class ReportRepositoryImpl : ReportRepository {
         minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
         status: ReportStatus?, categoryId: String?, limit: Int
     ): List<Report> = newSuspendedTransaction(Dispatchers.IO) {
-        // Use ST_Intersects(location, ST_MakeEnvelope(minLng, minLat, maxLng, maxLat, 4326)::geography)
-        val envelope = CustomFunction<GeoPoint>(
-            "ST_MakeEnvelope", GeographyPointColumnType(),
-            doubleParam(minLng), doubleParam(minLat), doubleParam(maxLng), doubleParam(maxLat), intParam(4326)
-        )
-        val bboxFilter = CustomFunction<Boolean>(
-            "ST_Intersects", BooleanColumnType(),
-            ReportsTable.location, envelope
-        )
-
-        val query = ReportsTable.selectAll().where {
-            (bboxFilter eq true) and (ReportsTable.deletedAt.isNull())
+        val query = if (coversEntireWorld(minLat, minLng, maxLat, maxLng)) {
+            // A -180..180 geography envelope contains antipodal edges in PostGIS.
+            // With no client bounds, omitting the spatial predicate means the same thing.
+            ReportsTable.selectAll().where { ReportsTable.deletedAt.isNull() }
+        } else {
+            val envelope = CustomFunction<GeoPoint>(
+                "ST_MakeEnvelope", GeographyPointColumnType(),
+                doubleParam(minLng), doubleParam(minLat), doubleParam(maxLng), doubleParam(maxLat), intParam(4326)
+            )
+            val bboxFilter = CustomFunction<Boolean>(
+                "ST_Intersects", BooleanColumnType(),
+                ReportsTable.location, envelope
+            )
+            ReportsTable.selectAll().where {
+                (bboxFilter eq true) and (ReportsTable.deletedAt.isNull())
+            }
         }
 
         if (status != null) {
@@ -187,6 +191,9 @@ class ReportRepositoryImpl : ReportRepository {
         )
     }
 }
+
+internal fun coversEntireWorld(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double): Boolean =
+    minLat <= -90.0 && minLng <= -180.0 && maxLat >= 90.0 && maxLng >= 180.0
 
 
 

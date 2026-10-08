@@ -381,11 +381,38 @@ class DatabaseMigrationsTest {
         )
 
         try {
-            ReportRepositoryImpl().create(report)
+            val repository = ReportRepositoryImpl()
+            repository.create(report)
             assertEquals("pending", scalar("SELECT status::text FROM reports WHERE id = ?", UUID.fromString(report.id)))
             assertEquals("medium", scalar("SELECT priority::text FROM reports WHERE id = ?", UUID.fromString(report.id)))
             assertEquals(report.latitude, scalar("SELECT ST_Y(location::geometry) FROM reports WHERE id = ?", UUID.fromString(report.id))!!.toDouble(), 0.000001)
             assertEquals(report.longitude, scalar("SELECT ST_X(location::geometry) FROM reports WHERE id = ?", UUID.fromString(report.id))!!.toDouble(), 0.000001)
+
+            // Reconstruct the repository to exercise the same read path used after a backend restart.
+            val restartedRepository = ReportRepositoryImpl()
+            val byId = assertNotNull(restartedRepository.findById(report.id))
+            assertEquals(report.latitude, byId.latitude, 0.000001)
+            assertEquals(report.longitude, byId.longitude, 0.000001)
+
+            val worldList = restartedRepository.findByBbox(
+                minLat = -90.0,
+                minLng = -180.0,
+                maxLat = 90.0,
+                maxLng = 180.0,
+                status = null,
+                categoryId = null,
+                limit = 50,
+            )
+            assertTrue(worldList.any { it.id == report.id && it.latitude == report.latitude && it.longitude == report.longitude })
+
+            if (report.userId != null) {
+                val byUser = restartedRepository.findByUserId(report.userId, cursor = null, limit = 20)
+                assertTrue(byUser.any { it.id == report.id && it.latitude == report.latitude && it.longitude == report.longitude })
+            } else {
+                val byTrackingCode = assertNotNull(restartedRepository.findByTrackingCodeHash(report.trackingCodeHash!!))
+                assertEquals(report.latitude, byTrackingCode.latitude, 0.000001)
+                assertEquals(report.longitude, byTrackingCode.longitude, 0.000001)
+            }
         } finally {
             execute("DELETE FROM reports WHERE id = ?", UUID.fromString(report.id))
             connection.commit()
