@@ -6,6 +6,8 @@ Este repositorio contiene el backend independiente (standalone) del proyecto Map
 
 La [revisión de integración de los tres repositorios](docs/INTEGRACION_REPOSITORIOS_2026-10-06.md) identifica las ramas actuales de Android/web, diferencias de contrato y pruebas pendientes antes de conectarlos.
 
+La **[constancia de auditoría integral del 13 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
+
 ## 🏗 Arquitectura y Tecnologias
 
 El backend esta desarrollado completamente en Kotlin y utiliza las siguientes tecnologias:
