@@ -4,9 +4,9 @@ Este repositorio contiene el backend independiente (standalone) del proyecto Map
 
 **Actualización:** registro/login de vecinos por **DNI + contraseña**. Ver [contrato, migración y pruebas](docs/AUTENTICACION_DNI.md). El informe del 1 de octubre es histórico; esta actualización documenta los cambios posteriores.
 
-La [revisión de integración de los tres repositorios](docs/INTEGRACION_REPOSITORIOS_2026-10-06.md) identifica las ramas actuales de Android/web, diferencias de contrato y pruebas pendientes antes de conectarlos.
+La [revisión de integración del 6 de octubre](docs/INTEGRACION_REPOSITORIOS_2026-10-06.md) queda como antecedente histórico de las ramas y diferencias detectadas antes de conectar Android.
 
-La **[constancia de auditoría integral del 13 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
+La **[constancia de auditoría integral, actualizada el 14 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, incluida la integración Android del PR #1, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
 
 ## 🏗 Arquitectura y Tecnologias
 

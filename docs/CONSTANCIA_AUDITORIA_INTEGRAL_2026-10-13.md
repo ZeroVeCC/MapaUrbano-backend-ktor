@@ -1,6 +1,9 @@
 # Constancia de auditoría integral de Mapa Urbano
 
-**Fecha de corte:** 13 de octubre de 2026  
+**Fecha de corte original:** 13 de octubre de 2026
+
+**Última actualización:** 14 de octubre de 2026, después de la fusión Android PR #1
+
 **Responsable de esta constancia:** revisión técnica realizada sobre los repositorios publicados de Mapa Urbano  
 **Repositorio donde se conserva:** `ZeroVeCC/MapaUrbano-backend-ktor`  
 **Propósito:** dejar una referencia verificable de qué existe, qué fue probado, qué está integrado y qué falta para que los tres componentes funcionen juntos.
@@ -9,13 +12,13 @@
 
 ## 1. Resultado general
 
-El proyecto tiene una base técnica amplia, pero los tres repositorios todavía no forman una aplicación integrada de extremo a extremo.
+El proyecto tiene una base técnica amplia. Desde el 14 de octubre Android y backend ya forman un flujo ciudadano conectado, aunque todavía no existe una validación automatizada de extremo a extremo y el panel web continúa separado.
 
 - El **backend Ktor** es el componente más avanzado. Compila, sus 43 pruebas pasan, levanta PostgreSQL/PostGIS con Testcontainers y ya resolvió la escritura y lectura de coordenadas. El flujo ciudadano por DNI y gran parte del dominio están implementados.
-- El **frontend Android publicado en `main`** es una maqueta inicial. La interfaz más completa está en la rama `codex/frontend-stitch`, todavía sin fusionar a `main`, y continúa usando datos simulados. No contiene cliente HTTP, permiso de Internet, mapa real, cámara ni ubicación real. Su autenticación visual todavía usa correo.
+- El **frontend Android publicado en `main`** ya incorporó Stitch, cliente REST Ktor/OkHttp, autenticación por DNI, token Bearer en DataStore, MapLibre/OpenFreeMap, GPS y los flujos ciudadanos principales contra el backend. El PR #1 se fusionó en `8c866de`; la antigua rama `codex/frontend-stitch` fue eliminada después de la fusión.
 - El **frontend web** compila para producción y contiene un panel visual completo, pero todos sus datos son locales. No tiene integración HTTP, WebSocket, login real, guardas ni manejo de sesión. Tres de sus ocho pruebas fallan.
 - El **monorepo original** sigue siendo la fuente del alcance, arquitectura, requisitos y decisiones iniciales. Sus ramas posteriores no están consolidadas en `main`; por eso no debe tomarse `main` de ese repositorio como el estado actual del producto.
-- La principal barrera de integración ya no es PostGIS. Es la falta de un contrato compartido y consumido por Android y web, junto con la autenticación administrativa incompleta del backend.
+- El contrato ciudadano entre Android y backend coincide en los DTO y rutas revisados. Las barreras principales pasan a ser la autenticación/API administrativa, el panel web sin conexión, fotografías reales, paginación/historial incompletos y una prueba E2E reproducible.
 
 ## 2. Alcance y método de revisión
 
@@ -23,9 +26,11 @@ Se revisaron estos repositorios y referencias remotas:
 
 | Componente | Repositorio | Referencia revisada | Revisión |
 |---|---|---|---|
-| Backend Ktor | `ZeroVeCC/MapaUrbano-backend-ktor` | `main` | `b2dbaa026f82377008e23e13d448dced61a0abce` |
-| Android standalone | `Jquincal/Mapaurbano_frontend_kotlin` | `main` | `b61792e` |
-| Android, interfaz completa | mismo repositorio | `codex/frontend-stitch` | `0a26dd4` |
+| Backend Ktor, código funcional | `ZeroVeCC/MapaUrbano-backend-ktor` | `main` | `b2dbaa026f82377008e23e13d448dced61a0abce` |
+| Backend, constancia inicial | mismo repositorio | `main` antes de esta actualización | `56907e566ac834fadef9bbb4982a522fc71f7c77` |
+| Android standalone integrado | `Jquincal/Mapaurbano_frontend_kotlin` | `main` | `8c866deb2a7bdff1a112baf34f319b17be099822` |
+| Android, base Stitch incorporada | mismo repositorio | commit antecesor en `main` | `0a26dd4` |
+| Android, integración REST/mapa | mismo repositorio | commit antecesor en `main` | `9a8e2170cbacf6bdaf8331240959e94256436aa4` |
 | Frontend web | `Santy112/MapaUrbano-frontend-web` | `main` | `7ba06ad` |
 | Monorepo original | `Jquincal/Mapa-Urbano` | `main` | `13150ab` |
 | Documentación original vigente | mismo repositorio | `develop` | `9b28a7e` |
@@ -37,7 +42,7 @@ La revisión incluyó:
 1. inventario de archivos versionados y conteo por tecnología;
 2. lectura del código fuente, configuración, migraciones, documentación y pruebas;
 3. comparación de ramas y cronología de commits;
-4. inspección de pull requests y ejecuciones de GitHub Actions visibles el 13 de octubre de 2026;
+4. inspección de pull requests y ejecuciones de GitHub Actions visibles hasta el 14 de octubre de 2026;
 5. compilación y pruebas locales donde el entorno lo permitió;
 6. comparación de contratos, modelos, categorías, estados, identificadores y autenticación entre componentes.
 
@@ -48,8 +53,7 @@ Los binarios se verificaron por ubicación, tipo y tamaño, sin pretender interp
 | Repositorio/referencia | Archivos relevantes | Código principal observado |
 |---|---:|---|
 | Backend `main` | 127 | 106 archivos Kotlin, 5.658 líneas; 3 migraciones SQL; OpenAPI; Docker; CI |
-| Android `main` | 50 | 18 archivos Kotlin, 978 líneas |
-| Android `codex/frontend-stitch` | 60 | 23 archivos Kotlin, 4.933 líneas; 4 fuentes Inter |
+| Android `main` actualizado | 79 | 35 archivos Kotlin, 6.020 líneas; REST, MapLibre, GPS, DataStore y 4 fuentes Inter |
 | Web `main` | 46 | 17 TypeScript, 8 HTML y 8 CSS; 2.048 líneas aproximadas entre esos grupos |
 | Monorepo `develop` | documentación y base histórica | 20 Kotlin, 24 Markdown y 3 SQL; 27 commits visibles en el conjunto de ramas |
 
@@ -123,6 +127,12 @@ Se actualizó CI para que las pruebas unitarias no dependieran de una base local
 
 Se comprobaron las ramas remotas, se compiló el panel web, se ejecutaron sus pruebas y se ejecutó el conjunto completo de pruebas del backend con Docker/PostGIS. Esta constancia reúne esa evidencia y redefine la ruta pendiente según el código realmente publicado.
 
+### 4.9. 14 de octubre: fusión de Android integrado
+
+El repositorio Android fusionó el PR #1, **“Integrar frontend Android, API REST y mapa interactivo”**, mediante `8c866de`. La fusión incorpora el diseño Stitch `0a26dd4` y el commit `9a8e217`, que conecta la aplicación con el backend real.
+
+El nuevo `main` reemplaza la maqueta de septiembre y agrega 6.917 líneas mientras elimina 1.033 de la estructura anterior. La rama remota `codex/frontend-stitch` fue eliminada tras la fusión. GitHub Actions `38567264700` completó correctamente pruebas unitarias, Lint, APK debug y JaCoCo mediante `scripts/validate.sh`.
+
 ## 5. Monorepo original: qué conserva y cómo usarlo
 
 Repositorio: `Jquincal/Mapa-Urbano`.
@@ -158,7 +168,7 @@ Para futuras decisiones:
 
 - usar el monorepo para **alcance y requisitos**;
 - usar `ZeroVeCC/MapaUrbano-backend-ktor/main` para el **backend actual**;
-- revisar siempre la rama Android indicada, porque su `main` y Stitch difieren mucho;
+- usar `Jquincal/Mapaurbano_frontend_kotlin/main` como Android vigente desde la fusión del PR #1;
 - usar el repositorio web standalone para el **panel actual**;
 - no portar automáticamente código viejo del monorepo sin compararlo con el standalone.
 
@@ -281,7 +291,7 @@ Verificación local del 13 de octubre de 2026:
 | integración PostgreSQL/PostGIS | 15/15 correctas |
 | total | **43/43 correctas, 0 fallos, 0 omitidas** |
 
-Docker Desktop 29.8.1 se inició correctamente y Testcontainers ejecutó la integración real. La última ejecución observada de GitHub Actions en `main`, identificador `37711945400`, también finalizó correctamente.
+Docker Desktop 29.8.1 se inició correctamente y Testcontainers ejecutó la integración real. GitHub Actions `38482124016`, correspondiente a la publicación inicial de esta constancia, también finalizó correctamente.
 
 La suite cubre CORS, errores de persistencia, rutas base, DNI, login/logout/baja, migraciones, restricciones, autoría anónima y autenticada, tipos geográficos, lectura de coordenadas, metadatos de imagen, asignaciones, borrado lógico, eventos, consulta por código, cambio atómico de estado y creación de reportes.
 
@@ -296,7 +306,7 @@ No cubre todavía el flujo administrativo HTTP, sesiones admin reales, procesami
 3. **Validador admin incompleto:** confía en la sesión deserializada y no la contrasta con una sesión persistida.
 4. **Sesión admin en memoria:** `AdminSessionRepositoryImpl` usa `ConcurrentHashMap`; un reinicio la elimina.
 5. **No hay administrador inicial:** no existe seed ni mecanismo documentado de bootstrap.
-6. **No hay integración cliente-servidor comprobada:** ningún frontend publicado consume este backend.
+6. **No hay E2E automatizado cliente-servidor:** Android ya consume el backend y fue recorrido en dispositivo según su documentación, pero falta una prueba reproducible dentro de CI.
 
 #### Prioridad alta
 
@@ -328,82 +338,103 @@ No cubre todavía el flujo administrativo HTTP, sesiones admin reales, procesami
 13. Algunos mensajes/comentarios muestran mojibake, con riesgo de respuestas mal codificadas.
 14. Ktor no sirve todavía el build de Angular, requisito original RF-14.
 
-## 7. Android: estado completo
+## 7. Android: estado completo actualizado al 14 de octubre
 
-### 7.1. `main`
+### 7.1. Integración en `main`
 
-El `main` standalone es una primera versión de Compose:
+El `main` vigente es `8c866de`, merge del PR #1. Contiene como antecesores la interfaz Stitch `0a26dd4` y la integración REST/mapa `9a8e217`. Ya no existe una diferencia funcional entre `main` y la antigua rama Stitch; esa rama remota fue eliminada.
 
-- actividad principal y navegación básica;
-- mapa representado como placeholder;
-- formulario, Mis reportes y seguimiento;
-- dos reportes de muestra mediante `FakeReportRepository`;
-- sin REST, autenticación, GPS, cámara ni SDK cartográfico.
+El salto respecto de `b61792e` comprende 72 archivos modificados, 6.917 líneas agregadas y 1.033 eliminadas. La estructura anterior fue reemplazada por una aplicación Compose organizada como `UI → ViewModel → Repository`.
 
-Su README reconoce estas funciones como pendientes. Esta rama no representa el trabajo visual más avanzado.
+### 7.2. Funciones reales incorporadas
 
-### 7.2. Rama `codex/frontend-stitch`
+- Ktor Client 3.5.1 con motor OkHttp y serialización Kotlinx JSON.
+- URL configurable por `MAPA_URBANO_API_BASE_URL`; emulador por defecto en `10.0.2.2`.
+- `INTERNET`, ubicación aproximada y ubicación precisa en el manifiesto.
+- tráfico HTTP local habilitado solo en la variante debug; release exige HTTPS.
+- registro, login, restauración de sesión, perfil, logout y baja por DNI.
+- token Bearer persistido en Preferences DataStore y eliminado ante logout, baja o 401 en llamadas protegidas.
+- categorías, lista pública, detalle, creación multipart, seguimiento por código y Mis reportes conectados.
+- elección real entre reporte anónimo y reporte asociado a la cuenta.
+- MapLibre Native 13.6.1 con estilo Liberty de OpenFreeMap.
+- marcadores desde coordenadas del backend, selección manual y centrado por GPS mediante Fused Location Provider.
+- filtrado de `0.0, 0.0`, valores no finitos y coordenadas fuera de rango.
+- mensajes diferenciados para red, 400, 401, 403, 404, 409, 429 y 5xx.
+- preservación del borrador ante fallos y sesión vencida.
 
-Esta rama agrega:
+### 7.3. Inventario de responsabilidad
 
-- navegación entre mapa/lista, detalle, formulario y confirmación;
-- filtros combinados por texto, estado y categoría;
-- elección explícita entre reporte con cuenta y anónimo;
-- simulación de fotografía, permisos y ubicación;
-- código de seguimiento e historial visual;
-- login, registro, perfil y Mis reportes;
-- estados de carga, vacío y error;
-- persistencia del borrador durante ciertos cambios de navegación;
-- sistema visual, componentes comunes y fuentes Inter.
-
-Archivos principales observados:
-
-| Grupo | Función |
+| Grupo | Función actual |
 |---|---|
-| `MainActivity.kt`, `MapaUrbanoApp.kt` | entrada, tema, estado y navegación de alto nivel |
-| `core/data/AppViewModel.kt` | estado global, filtros, sesión y simulación de altas |
-| `core/data/DemoContent.kt` | usuarios, categorías y reportes falsos |
-| `core/data/ReportRepository.kt` | repositorio simulado |
-| `core/model/Models.kt` | modelos de UI y borradores |
-| `core/navigation/*` | destinos y barras de navegación |
-| `core/design/*` | tema, colores y tipografía |
-| `feature/common/StitchUi.kt` | piezas compartidas de interfaz |
-| `feature/map/*` | mapa ilustrado, lista, filtros y estados |
-| `feature/report/*` | formulario y confirmación |
-| `feature/tracking/*` | ingreso de código y resultado |
-| `feature/auth/*` | login y registro visuales |
-| `feature/myreports/*` | perfil, lista propia y detalle |
+| `MainActivity.kt`, `MapaUrbanoApp.kt` | inicialización, tema, navegación, diálogos y conexión de pantallas |
+| `core/data/AppContainer.kt` | composición manual de API y repositorios remotos |
+| `core/data/AppViewModel.kt` | estado, carga remota, sesión, altas, tracking y navegación |
+| `core/data/AuthRepository.kt` | adaptación de autenticación remota al modelo de UI |
+| `core/data/RemoteReportRepository.kt` | conversión de DTO backend a modelos Android |
+| `core/data/SessionStore.kt` | almacenamiento local del Bearer token |
+| `core/data/UserFacingErrors.kt` | traducción de red/HTTP a mensajes específicos |
+| `core/network/ApiDtos.kt` | espejo del contrato ciudadano del backend |
+| `core/network/MapaUrbanoApi.kt` | llamadas REST, multipart, Bearer y decodificación de errores |
+| `core/location/LocationRequest.kt` | permisos en contexto y una lectura de ubicación actual |
+| `feature/map/InteractiveMap.kt` | ciclo de vida MapLibre, estilo, cámara y marcadores |
+| `feature/map/MapScreen.kt` | mapa/lista, filtros, estados vacíos y acción de alta |
+| `feature/report/*` | formulario, selector geográfico y confirmación |
+| `feature/auth/*` | login/registro DNI y perfil |
+| `feature/myreports/*` | listado y detalle ciudadano |
+| `feature/tracking/*` | consulta real por código |
+| `DemoContent` y `FakeReportRepository` | fakes reservados para pruebas y previsualización |
 
-### 7.3. Lo que todavía es simulado
+### 7.4. Compatibilidad comprobada con el backend
 
-- `FakeReportRepository` y `DemoContent` son la fuente de datos.
-- El alta espera unos milisegundos y genera un ID `REP-...` en memoria.
-- El seguimiento busca códigos en la colección local.
-- Las coordenadas del mapa son puntos dibujados en una ilustración.
-- Ubicación, foto, permisos y errores son estados simulados.
-- No hay Retrofit, cliente Ktor, OkHttp ni otro cliente HTTP.
-- El manifiesto no declara `INTERNET`.
-- No hay mapa real, cámara ni proveedor de ubicación.
+La comparación campo por campo mostró coincidencia en:
 
-### 7.4. Diferencias con el contrato actual
+- `LoginRequest/Response`, `RegisterRequest/Response` y `UserProfileResponse`;
+- `CategoryResponse`;
+- `CursorPage`;
+- resumen y detalle público de reporte;
+- historial de estados;
+- creación multipart: `title`, `description`, `categorySlug`, `latitude`, `longitude`, `submissionMode`;
+- consulta `trackingCode`;
+- envoltorio `ApiErrorEnvelope` y sus detalles.
 
-- La cuenta usa `email` en el modelo y en las pantallas; el backend requiere DNI.
-- La interfaz incluso muestra el DNI como campo “no disponible”.
-- Las categorías locales son `roads`, `lighting`, `waste`, `public-space`, `obstruction`, `signage`, `water` y `other`; el backend publica `bache`, `luminaria`, `basura`, `vandalismo`, `inundacion` y `otro`.
-- Los IDs locales `REP-...` no coinciden con UUID del backend.
-- Los estados son enums Kotlin de interfaz y todavía no existe serialización común.
-- No hay tratamiento de HTTP 400, 401, 409, 429 y 500.
-- La rama no está fusionada en el `main` standalone.
+La aplicación ya compensa dos defectos conocidos del backend: acepta que Mis reportes coloque un ID dentro de `categorySlug` y evita paginar mientras el cursor no esté corregido.
 
-### 7.5. Defecto visual confirmado
+### 7.5. Correcciones Android confirmadas
 
-`MapScreen` retorna antes de construir `StitchMiniMap` cuando la colección está vacía. Eso oculta el mapa con cero reportes y también cuando un filtro no encuentra coincidencias. La solución pertenece a Android: el mapa debe permanecer montado, sin marcadores, y el estado vacío debe mostrarse junto con la acción para reportar.
+- El mapa permanece visible con cero reportes y con filtros sin coincidencias.
+- El estado vacío distingue entre “Todavía no hay reportes” y “No encontramos coincidencias”.
+- La acción de crear reporte continúa visible.
+- La autenticación visual y el modelo cambiaron de correo a DNI.
+- Los mensajes 500 ya no se presentan como falla de conexión.
+- Las coordenadas reales se muestran después de la corrección PostGIS del backend.
 
-### 7.6. Pruebas Android
+### 7.6. Pendientes y riesgos Android
 
-La rama Stitch contiene cinco pruebas unitarias y una instrumentada. Cubren confirmación anónima, preservación del borrador al iniciar sesión, normalización de código, sesión vencida y prevención de doble envío. La versión equivalente del PR #12 en el monorepo tuvo CI correcto.
+#### Prioridad alta
 
-No se observó una ejecución remota de CI para la rama Stitch del repositorio standalone: su workflow solo reacciona a `main` y `develop`. Tampoco hay pruebas de red, contrato REST, cámara, ubicación, mapa real o backend integrado.
+1. La fotografía sigue siendo una simulación visual: no se conservan bytes ni se adjunta la parte `image` al multipart.
+2. No hay prueba automatizada cliente-servidor; los tests de ViewModel usan fakes por diseño.
+3. Mis reportes consume solo la primera página y el detalle privado usa temporalmente la ruta pública.
+4. Historial e indicador de imagen dependen de campos que el backend todavía devuelve vacíos/falsos.
+5. El token se almacena en Preferences DataStore sin cifrado de aplicación. Los backups se excluyen, pero debe decidirse la protección local requerida.
+
+#### Prioridad media
+
+1. El mapa usa marcadores predeterminados iguales; no diferencia visualmente estado ni selección como proponía el plan.
+2. `InteractiveMap` avisa que comenzó una interacción en `ACTION_DOWN`, pero no emite explícitamente `false` en `ACTION_UP/CANCEL`. Debe probarse que el scroll vertical se reactive siempre después de usar el mapa.
+3. Permiso denegado y GPS apagado muestran explicación, pero no ofrecen todavía acceso directo a ajustes.
+4. `HttpClient` vive durante toda la aplicación y no expone cierre; es aceptable como singleton de proceso, pero debe mantenerse así para no crear clientes repetidos.
+5. Las funciones “recuperar contraseña”, notificaciones, editar perfil y cambiar contraseña siguen marcadas como futuras.
+6. El borrador vive en el ViewModel; no hay persistencia duradera ante muerte del proceso.
+7. La integración se probó manualmente en un Redmi según la documentación, pero la validación final de gestos/GPS todavía figura pendiente en los documentos.
+
+### 7.7. Pruebas y CI Android
+
+El código contiene 11 pruebas unitarias y 2 pruebas instrumentadas Compose. Las unitarias cubren flujo anónimo, login conservando borrador, seguimiento, sesión vencida, doble envío, error 500, mensajes HTTP/red y coordenadas. Las instrumentadas comprueban mapa con reportes y mapa vacío visible.
+
+El workflow `android.yml` ejecuta `scripts/validate.sh`, que comprueba secretos y formato, y luego corre pruebas unitarias, Android Lint, construcción del APK debug y JaCoCo. No ejecuta las dos pruebas instrumentadas porque no configura dispositivo/emulador.
+
+GitHub Actions `38567264700`, sobre `8c866de`, terminó correctamente el 14 de octubre de 2026. La auditoría local no pudo repetir Gradle porque esta computadora no tiene Android SDK configurado; el intento alcanzó la configuración de Gradle y se detuvo con `SDK location not found`. El resultado remoto verde es la evidencia de compilación disponible.
 
 ## 8. Frontend web: estado completo
 
@@ -460,27 +491,27 @@ Los fallos son dos pruebas de `App` y una de `Sidebar`, inicialmente por no prov
 
 ## 9. Compatibilidad entre los tres componentes
 
-| Tema | Backend | Android Stitch | Web | Consecuencia |
+| Tema | Backend | Android `main` | Web | Consecuencia |
 |---|---|---|---|---|
-| identidad ciudadana | DNI + contraseña | correo + contraseña, simulado | no aplica al vecino | Android debe migrar a DNI |
+| identidad ciudadana | DNI + contraseña | DNI + contraseña real | no aplica al vecino | contrato Android/backend alineado |
 | administrador | sesión pretendida, incompleta | no aplica | sin login | panel no puede autenticarse |
-| fuente de datos | PostgreSQL/PostGIS | memoria/demo | constantes locales | no hay flujo integrado |
-| categorías | 6 slugs en español singular | 8 IDs ingleses | 5 categorías locales | filtros/altas no coinciden |
-| ID de reporte | UUID | `REP-...` | números | modelos deben alinearse |
-| tracking | código opaco del servidor | código local | no implementado | Android debe usar endpoint real |
-| estados | `pending`, `in_progress`, `resolved` en DB; DTO debe fijarse | enum `Pending/InProgress/Resolved` | etiquetas españolas locales | falta contrato de serialización probado |
+| fuente de datos | PostgreSQL/PostGIS | API real; fakes solo en pruebas | constantes locales | ciudadano conectado; administración no |
+| categorías | 6 slugs en español singular | catálogo remoto por ID y slug | 5 categorías locales | Android alineado; web pendiente |
+| ID de reporte | UUID | UUID recibido del backend | números locales | Android alineado; web pendiente |
+| tracking | código opaco del servidor | endpoint real | no implementado | flujo ciudadano integrado |
+| estados | `pending`, `in_progress`, `resolved` | conversión tolerante a mayúsculas | etiquetas españolas locales | Android alineado; web pendiente |
 | prioridad | enum backend | no modelada de forma operativa | visual/parcial | panel no puede administrarla aún |
-| coordenadas | PostGIS, latitud/longitud reales | mapa ilustrado | marcadores fijos | ningún cliente consume ubicación real |
-| fotografías | BYTEA + endpoint específico | simuladas | archivos públicos locales | falta carga/descarga real |
-| errores HTTP | respuestas API parciales | mensaje genérico/simulado | sin cliente | falta manejo por código |
+| coordenadas | PostGIS, latitud/longitud reales | MapLibre + GPS + marcadores remotos | marcadores fijos | flujo móvil conectado; web local |
+| fotografías | BYTEA + endpoint específico | selección simulada, sin bytes | archivos públicos locales | falta carga/descarga real en clientes |
+| errores HTTP | envoltorio controlado | distingue red y códigos principales | sin cliente | Android alineado; web pendiente |
 | tiempo real | WebSocket en memoria | sin cliente | sin cliente | actualizaciones no llegan a UI |
-| paginación | incompleta | no consume | no consume | definir antes de conectar listados |
+| paginación | incompleta | primera página, sin cursor | no consume | corregir backend antes de habilitarla |
 
 ### Contratos que deben congelarse antes de integrar
 
-1. DTO exacto de categoría y uso estable de `slug`/`id`.
-2. JSON de lista: `{ "items": [...], "nextCursor": ... }`.
-3. serialización exacta de estado y prioridad;
+1. estabilizar definitivamente el uso de `slug`/`id` en Mis reportes;
+2. corregir y probar el cursor de `{ "items": [...], "nextCursor": ... }`;
+3. publicar la serialización exacta de estado y prioridad en OpenAPI;
 4. UUID como identificador público y código opaco solo para seguimiento anónimo;
 5. multipart de creación, nombres de partes y errores;
 6. contrato de imagen y `hasImage`;
@@ -495,26 +526,26 @@ Estados usados: **cumplido**, **parcial**, **pendiente** o **bloqueado**.
 
 | Req. | Objetivo resumido | Estado observado | Evidencia/deuda |
 |---|---|---|---|
-| RF-01 | mapa Android con reportes | parcial | mapa ilustrado y datos demo; sin SDK/API |
-| RF-02 | iniciar desde punto del mapa | parcial | selección simulada |
-| RF-03 | formulario completo y foto | parcial | UI presente; envío/foto reales pendientes |
-| RF-04 | detalle y estado ciudadano | parcial | UI y API separadas; detalle propio 501 |
-| RF-05 | filtros por categoría/estado | parcial | UI local; backend parcial; sin integración |
+| RF-01 | mapa Android con reportes | cumplido | MapLibre muestra reportes públicos del backend |
+| RF-02 | iniciar desde punto del mapa | cumplido | selector táctil y GPS producen coordenadas reales |
+| RF-03 | formulario completo y foto | parcial alto | formulario/multipart reales; foto todavía simulada |
+| RF-04 | detalle y estado ciudadano | cumplido en flujo público | detalle y tracking conectados; detalle privado sigue 501 |
+| RF-05 | filtros por categoría/estado | parcial alto | Android filtra datos reales; web continúa local |
 | RF-06 | admin cambia estado | parcial/bloqueado | operación atómica existe; auth admin impide flujo real |
 | RF-07 | tabla paginada y mapa admin | parcial | UI demo; API/listado admin pendientes |
 | RF-08 | totales/distribuciones | parcial | UI fija; backend devuelve vacío |
 | RF-09 | foto binaria y metadatos | parcial | esquema/repositorio existen; validación/atomicidad incompletas |
 | RF-10 | eliminar con auditoría | parcial | use case existe; flujo y transacción completa pendientes |
-| RF-11 | código para anónimo | cumplido en backend | probado; cliente real pendiente |
-| RF-12 | consultar por código | cumplido en backend/parcial producto | endpoint probado; Android simula |
+| RF-11 | código para anónimo | cumplido | backend genera y Android presenta el código real |
+| RF-12 | consultar por código | cumplido | Android consume `POST /report-status` |
 | RF-13 | evento WS tras commit | parcial | estado publica evento; bus no persistente y clientes ausentes |
 | RF-14 | Ktor sirve Angular | pendiente | no hay static content del build web |
 | RF-15 | asignar/reasignar | parcial | dominio/repositorio; UI/API real incompletas |
 | RF-16 | prioridad y fecha objetivo | parcial | dominio/esquema; flujo admin no operativo |
 | RF-17 | historial de asignación/prioridad | parcial | tablas existen; garantías transaccionales incompletas |
-| RF-18 | registro/login/sesión/logout vecino | cumplido en backend | DNI probado; Android no integrado |
-| RF-19 | listar y consultar reportes propios | parcial | listado existe con defectos; detalle 501 |
-| RF-20 | elegir cuenta o anónimo | cumplido en backend/parcial producto | UI simula; backend lo prueba |
+| RF-18 | registro/login/sesión/logout vecino | cumplido | DNI y Bearer integrados en Android/backend |
+| RF-19 | listar y consultar reportes propios | parcial alto | listado Android integrado; cursor y detalle privado pendientes |
+| RF-20 | elegir cuenta o anónimo | cumplido | Android y backend respetan la elección |
 | RF-21 | autor desde sesión, no cliente | cumplido en backend | cubierto por implementación/pruebas |
 
 ## 11. Matriz de requisitos no funcionales
@@ -533,7 +564,7 @@ Estados usados: **cumplido**, **parcial**, **pendiente** o **bloqueado**.
 | RNF-10, accesibilidad | parcial | no auditada completamente; web sin prueba teclado integral |
 | RNF-11, concurrencia optimista | parcial | estado mejor cubierto; otras operaciones no |
 | RNF-12, binario fuera de listados | cumplido en diseño/backend | imagen usa endpoint específico |
-| RNF-13, secretos no expuestos | parcial alto | BCrypt/token hash correctos; defaults de desarrollo y admin pendientes |
+| RNF-13, secretos no expuestos | parcial alto | BCrypt/token hash correctos; Android guarda Bearer en DataStore sin cifrado propio; defaults/admin pendientes |
 | RNF-14, privacidad pública/WS | parcial | DTO públicos no deben filtrar identidad; falta prueba integral WS |
 
 ## 12. Ruta recomendada desde este estado
@@ -542,10 +573,11 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 
 ### Fase 0 — fijar referencias y contrato
 
-- [ ] Decidir si `codex/frontend-stitch` se fusiona al `main` Android standalone.
+- [x] Fusionar `codex/frontend-stitch` al `main` Android standalone mediante PR #1.
 - [ ] Publicar un OpenAPI completo desde el backend.
 - [ ] Definir ejemplos reales de request/response y errores.
-- [ ] Alinear categoría, estado, prioridad, UUID, tracking, cursor e imagen.
+- [x] Alinear Android con categoría, estado, UUID y tracking del contrato ciudadano actual.
+- [ ] Completar prioridad, cursor, imagen e historiales en el contrato publicado.
 - [ ] Añadir una colección de pruebas de contrato o fixtures compartidos.
 
 **Salida:** los dos frontends pueden generar modelos contra un contrato estable.
@@ -585,16 +617,19 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 
 ### Fase 4 — integrar Android
 
-- [ ] Fusionar/rebasar la rama visual elegida.
-- [ ] Cambiar correo por DNI.
-- [ ] Agregar cliente HTTP, permiso de Internet y almacenamiento seguro del token.
-- [ ] Consumir categorías, mapa/lista, alta multipart, detalle, Mis reportes y tracking.
-- [ ] Mantener visible el mapa cuando no hay resultados.
-- [ ] Diferenciar red, 400, 401, 409, 429 y 500.
-- [ ] Incorporar mapa, ubicación y cámara reales.
-- [ ] Probar contra Docker en dispositivo/emulador, incluyendo IP local y CORS/red Android.
+- [x] Fusionar la rama visual elegida.
+- [x] Cambiar correo por DNI.
+- [x] Agregar cliente HTTP, permiso de Internet y persistencia local del token.
+- [x] Consumir categorías, mapa/lista, alta multipart sin imagen, detalle, Mis reportes y tracking.
+- [x] Mantener visible el mapa cuando no hay resultados.
+- [x] Diferenciar red, 400, 401, 409, 429 y 500.
+- [x] Incorporar MapLibre, selección manual y ubicación GPS.
+- [ ] Adjuntar fotografías reales y mostrar la imagen recuperada.
+- [ ] Corregir paginación y usar el detalle privado cuando el backend lo implemente.
+- [ ] Automatizar una prueba de contrato/E2E contra Docker.
+- [ ] Completar la validación manual de gestos, GPS y scroll en el Redmi.
 
-**Salida:** recorrido ciudadano real en un dispositivo.
+**Salida actual:** recorrido ciudadano principal conectado; faltan foto, paginación y validación E2E reproducible.
 
 ### Fase 5 — integrar web
 
@@ -623,15 +658,14 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 
 Si el objetivo inmediato es mostrar una demostración funcional, el orden mínimo aconsejado es:
 
-1. contrato API completo;
-2. autenticación admin;
-3. endpoints admin sin 501;
-4. Android real por DNI;
-5. web real;
-6. E2E con Docker;
-7. seguridad, rendimiento y despliegue.
+1. autenticación admin;
+2. endpoints admin sin 501;
+3. web real;
+4. cerrar foto/paginación/detalle propio en el flujo ciudadano;
+5. E2E con Docker para Android y web;
+6. seguridad, rendimiento y despliegue.
 
-No conviene seguir ampliando pantallas simuladas antes de cerrar los puntos 1 a 3, porque aumenta la cantidad de modelos y comportamientos que luego habrá que reemplazar.
+Android ya superó la etapa de pantallas simuladas para el recorrido principal. El foco de integración debe trasladarse al panel administrativo y a las partes concretas que continúan incompletas.
 
 ## 14. Evidencia reproducible
 
@@ -644,6 +678,18 @@ No conviene seguir ampliando pantallas simuladas antes de cerrar los puntos 1 a 
 ```
 
 Las pruebas de integración requieren Docker activo porque usan Testcontainers con PostgreSQL/PostGIS.
+
+### Android
+
+El repositorio define esta validación:
+
+```bash
+./scripts/validate.sh
+```
+
+Ejecuta `testDebugUnitTest`, `lintDebug`, `assembleDebug` y `jacocoDebugReport`. GitHub Actions `38567264700` la completó correctamente sobre `8c866de`. Las 2 pruebas instrumentadas requieren dispositivo/emulador y no forman parte del workflow actual.
+
+En esta computadora se descargó correctamente Gradle 9.1, pero no se pudo repetir la compilación porque no hay un Android SDK instalado/configurado. El error fue `SDK location not found`; no fue un fallo del código.
 
 ### Web
 
@@ -659,13 +705,13 @@ La compilación pasó y las pruebas quedaron 5/8, con los fallos documentados en
 
 ### GitHub
 
-Se verificaron ramas, commits, pull requests y ejecuciones mediante metadatos públicos de GitHub. El estado corresponde al momento de la auditoría y puede cambiar.
+Se verificaron ramas, commits, pull requests y ejecuciones mediante metadatos públicos de GitHub. Para Android se confirmó el PR #1 fusionado y el workflow exitoso `38567264700`. El estado corresponde al momento de la auditoría y puede cambiar.
 
 ## 15. Reglas de continuidad para próximas tareas
 
 1. Modificar y subir únicamente `ZeroVeCC/MapaUrbano-backend-ktor`, salvo instrucción expresa posterior del usuario.
 2. Tratar Android, web y monorepo como referencias de lectura.
-3. Antes de afirmar que una función de Android está o no está, indicar si se observó `main` o `codex/frontend-stitch`.
+3. Desde el 14 de octubre, tomar Android `main`/`8c866de` o posterior como referencia; la antigua rama Stitch fue fusionada y eliminada.
 4. La autenticación ciudadana vigente es por DNI, no correo.
 5. Las correcciones de escritura y lectura PostGIS ya están en `main` y tienen pruebas.
 6. Ejecutar pruebas unitarias e integración antes de subir cambios que afecten persistencia o rutas.
@@ -674,7 +720,7 @@ Se verificaron ramas, commits, pull requests y ejecuciones mediante metadatos p�
 
 ## 16. Conclusión técnica
 
-El backend tiene suficiente base para convertirse en el centro del sistema, y su persistencia geográfica crítica está funcionando. La siguiente etapa debe transformar los contratos y módulos parciales en flujos cerrados. Android y web muestran bien la intención del producto, pero el código publicado sigue siendo principalmente demostrativo. El proyecto se considerará integrado cuando ambos clientes reemplacen los datos locales por la misma API, la administración pueda autenticarse y ninguna ruta necesaria responda 501.
+El backend ya funciona como centro del recorrido ciudadano y Android dejó de ser una maqueta: usa la API real, DNI, MapLibre y GPS desde su `main`. El panel web sigue siendo demostrativo y la administración del backend continúa bloqueada por sesiones/rutas incompletas. El proyecto se considerará integrado de extremo a extremo cuando el panel reemplace sus datos locales, la administración pueda autenticarse, se cierren foto/paginación/detalle propio y una prueba reproducible recorra ambos clientes sin rutas necesarias en 501.
 
 Esta constancia debe leerse junto con:
 
