@@ -40,6 +40,16 @@ class RoutingTest {
     }
 
     @Test
+    fun `Swagger UI is served from its documented route`() = testApplication {
+        application { configureTestApplication() }
+
+        val response = client.request("/swagger")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertContains(response.bodyAsText(), "SwaggerUIBundle")
+    }
+
+    @Test
     fun `public and user route groups return their expected status`() = testApplication {
         application { configureTestApplication() }
 

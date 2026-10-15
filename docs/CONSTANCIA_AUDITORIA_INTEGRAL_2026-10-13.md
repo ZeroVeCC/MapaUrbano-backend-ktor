@@ -2,7 +2,7 @@
 
 **Fecha de corte original:** 13 de octubre de 2026
 
-**Última actualización:** 14 de octubre de 2026, después de la fusión Android PR #1
+**Última actualización:** 14 de octubre de 2026, después de completar el contrato OpenAPI del backend
 
 **Responsable de esta constancia:** revisión técnica realizada sobre los repositorios publicados de Mapa Urbano  
 **Repositorio donde se conserva:** `ZeroVeCC/MapaUrbano-backend-ktor`  
@@ -133,6 +133,12 @@ El repositorio Android fusionó el PR #1, **“Integrar frontend Android, API RE
 
 El nuevo `main` reemplaza la maqueta de septiembre y agrega 6.917 líneas mientras elimina 1.033 de la estructura anterior. La rama remota `codex/frontend-stitch` fue eliminada tras la fusión. GitHub Actions `38567264700` completó correctamente pruebas unitarias, Lint, APK debug y JaCoCo mediante `scripts/validate.sh`.
 
+### 4.10. 14 de octubre: contrato OpenAPI completo
+
+El Swagger del backend dejó de describir solamente el registro y login ciudadano. La especificación OpenAPI 3.0.3 ahora registra todas las rutas HTTP y los dos handshakes WebSocket existentes, junto con parámetros, cuerpos JSON, multipart, respuestas, errores comunes, esquemas reutilizables y ejemplos.
+
+Cada operación declara además su estado real mediante `x-implementation-status`: implementada, parcial, stub 501, bloqueada por autenticación administrativa o placeholder. De esta forma el contrato puede compartirse con Android y web sin presentar como terminadas las rutas que aún no funcionan. Se agregó `docs/SWAGGER.md` como guía de uso y una prueba automatizada que analiza el YAML, comprueba la cobertura de rutas, la unicidad de `operationId`, los estados y todas las referencias locales.
+
 ## 5. Monorepo original: qué conserva y cómo usarlo
 
 Repositorio: `Jquincal/Mapa-Urbano`.
@@ -231,7 +237,7 @@ No existe una tabla persistente de sesiones administrativas ni una tabla outbox 
 |---|---|---|
 | `GET /health/live` | implementada | comprueba proceso vivo |
 | `GET /health/ready` | parcial | responde 200; todavía no verifica la base |
-| `GET /swagger` | implementada | expone documentación, actualmente incompleta |
+| `GET /swagger` | implementada | expone el contrato OpenAPI 3.0.3 completo y el estado real de cada operación |
 | `GET /api/v1/categories` | implementada | catálogo desde PostgreSQL |
 | `GET /api/v1/reports` | implementada/parcial | lista pública y bbox; cursor sin aplicar |
 | `POST /api/v1/reports` | implementada/parcial | multipart, cuenta o anónimo, imagen con limitaciones |
@@ -283,17 +289,19 @@ Estas correcciones están en `main` y no deben volver a diagnosticarse como pend
 
 ### 6.7. Pruebas y CI
 
-Verificación local del 13 de octubre de 2026:
+Verificación local actualizada el 14 de octubre de 2026:
 
 | Grupo | Resultado |
 |---|---:|
-| unitarias | 28/28 correctas |
+| unitarias | 32/32 correctas |
 | integración PostgreSQL/PostGIS | 15/15 correctas |
-| total | **43/43 correctas, 0 fallos, 0 omitidas** |
+| total | **47/47 correctas, 0 fallos, 0 omitidas** |
 
 Docker Desktop 29.8.1 se inició correctamente y Testcontainers ejecutó la integración real. GitHub Actions `38482124016`, correspondiente a la publicación inicial de esta constancia, también finalizó correctamente.
 
-La suite cubre CORS, errores de persistencia, rutas base, DNI, login/logout/baja, migraciones, restricciones, autoría anónima y autenticada, tipos geográficos, lectura de coordenadas, metadatos de imagen, asignaciones, borrado lógico, eventos, consulta por código, cambio atómico de estado y creación de reportes.
+La suite cubre CORS, errores de persistencia, rutas base, DNI, login/logout/baja, migraciones, restricciones, autoría anónima y autenticada, tipos geográficos, lectura de coordenadas, metadatos de imagen, asignaciones, borrado lógico, eventos, consulta por código, cambio atómico de estado y creación de reportes. También valida el YAML OpenAPI, su cobertura de rutas, referencias internas, identificadores de operación, estados de implementación y la disponibilidad de Swagger UI.
+
+Redocly CLI validó además `documentation.yaml` como una descripción OpenAPI válida, sin errores. Conserva advertencias no bloqueantes por las respuestas `101` de WebSocket y por endpoints públicos que no tienen una respuesta 4xx específica.
 
 No cubre todavía el flujo administrativo HTTP, sesiones admin reales, procesamiento real de imágenes ni un recorrido completo desde Android/web.
 
@@ -319,7 +327,7 @@ No cubre todavía el flujo administrativo HTTP, sesiones admin reales, procesami
 7. La prioridad, asignación, eliminación y auditoría no siempre comparten una única transacción.
 8. Algunos use cases reciben `version` pero no la emplean correctamente, debilitando el control de concurrencia.
 9. Los eventos viven solo en memoria; sin outbox pueden perderse tras confirmar la transacción.
-10. Swagger/OpenAPI documenta casi solo autenticación ciudadana.
+10. El contrato OpenAPI ya está completo; debe mantenerse sincronizado al implementar o modificar las rutas pendientes.
 
 #### Prioridad media
 
@@ -574,11 +582,11 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 ### Fase 0 — fijar referencias y contrato
 
 - [x] Fusionar `codex/frontend-stitch` al `main` Android standalone mediante PR #1.
-- [ ] Publicar un OpenAPI completo desde el backend.
-- [ ] Definir ejemplos reales de request/response y errores.
+- [x] Publicar un OpenAPI completo desde el backend.
+- [x] Definir ejemplos reales de request/response y errores.
 - [x] Alinear Android con categoría, estado, UUID y tracking del contrato ciudadano actual.
-- [ ] Completar prioridad, cursor, imagen e historiales en el contrato publicado.
-- [ ] Añadir una colección de pruebas de contrato o fixtures compartidos.
+- [x] Completar prioridad, cursor, imagen e historiales en el contrato publicado, indicando sus limitaciones actuales.
+- [x] Añadir una prueba automatizada del contrato OpenAPI.
 
 **Salida:** los dos frontends pueden generar modelos contra un contrato estable.
 

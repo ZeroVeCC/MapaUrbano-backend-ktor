@@ -8,6 +8,8 @@ La [revisión de integración del 6 de octubre](docs/INTEGRACION_REPOSITORIOS_20
 
 La **[constancia de auditoría integral, actualizada el 14 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, incluida la integración Android del PR #1, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
 
+La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo probar la API desde `http://localhost:8080/swagger`, cómo autorizarse con el token ciudadano y cómo interpretar el estado real de cada endpoint.
+
 ## 🏗 Arquitectura y Tecnologias
 
 El backend esta desarrollado completamente en Kotlin y utiliza las siguientes tecnologias:
