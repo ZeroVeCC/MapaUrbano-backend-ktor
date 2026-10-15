@@ -10,6 +10,8 @@ La **[constancia de auditoría integral, actualizada el 14 de octubre de 2026](d
 
 La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo probar la API desde `http://localhost:8080/swagger`, cómo autorizarse con el token ciudadano y cómo interpretar el estado real de cada endpoint.
 
+El **[reescaneo y plan de privacidad del 15 de octubre](docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md)** registra las revisiones actuales de los cuatro repositorios, el problema de visibilidad global de reportes y las tareas separadas para backend, Android y web.
+
 ## 🏗 Arquitectura y Tecnologias
 
 El backend esta desarrollado completamente en Kotlin y utiliza las siguientes tecnologias:

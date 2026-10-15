@@ -2,7 +2,7 @@
 
 **Fecha de corte original:** 13 de octubre de 2026
 
-**Última actualización:** 14 de octubre de 2026, después de completar el contrato OpenAPI del backend
+**Última actualización:** 15 de octubre de 2026, después del reescaneo de repositorios y la revisión de privacidad
 
 **Responsable de esta constancia:** revisión técnica realizada sobre los repositorios publicados de Mapa Urbano  
 **Repositorio donde se conserva:** `ZeroVeCC/MapaUrbano-backend-ktor`  
@@ -14,8 +14,8 @@
 
 El proyecto tiene una base técnica amplia. Desde el 14 de octubre Android y backend ya forman un flujo ciudadano conectado, aunque todavía no existe una validación automatizada de extremo a extremo y el panel web continúa separado.
 
-- El **backend Ktor** es el componente más avanzado. Compila, sus 43 pruebas pasan, levanta PostgreSQL/PostGIS con Testcontainers y ya resolvió la escritura y lectura de coordenadas. El flujo ciudadano por DNI y gran parte del dominio están implementados.
-- El **frontend Android publicado en `main`** ya incorporó Stitch, cliente REST Ktor/OkHttp, autenticación por DNI, token Bearer en DataStore, MapLibre/OpenFreeMap, GPS y los flujos ciudadanos principales contra el backend. El PR #1 se fusionó en `8c866de`; la antigua rama `codex/frontend-stitch` fue eliminada después de la fusión.
+- El **backend Ktor** es el componente más avanzado. Compila, sus 47 pruebas pasan, levanta PostgreSQL/PostGIS con Testcontainers y ya resolvió la escritura y lectura de coordenadas. Sin embargo, el reescaneo confirmó que listado, detalle e imagen de reportes siguen siendo públicos; esto contradice la nueva política solicitada de que cada ciudadano vea únicamente sus reportes.
+- El **frontend Android publicado en `main`** ya incorporó Stitch, cliente REST Ktor/OkHttp, autenticación por DNI, token Bearer en DataStore, MapLibre/OpenFreeMap, GPS y los flujos ciudadanos principales contra el backend. Continúa exactamente en `8c866de`: carga el listado público al iniciar, permite anónimos y mezcla reportes globales con propios. El cambio de cuenta obligatoria mencionado por el equipo todavía no está publicado.
 - El **frontend web** compila para producción y contiene un panel visual completo, pero todos sus datos son locales. No tiene integración HTTP, WebSocket, login real, guardas ni manejo de sesión. Tres de sus ocho pruebas fallan.
 - El **monorepo original** sigue siendo la fuente del alcance, arquitectura, requisitos y decisiones iniciales. Sus ramas posteriores no están consolidadas en `main`; por eso no debe tomarse `main` de ese repositorio como el estado actual del producto.
 - El contrato ciudadano entre Android y backend coincide en los DTO y rutas revisados. Las barreras principales pasan a ser la autenticación/API administrativa, el panel web sin conexión, fotografías reales, paginación/historial incompletos y una prueba E2E reproducible.
@@ -26,7 +26,7 @@ Se revisaron estos repositorios y referencias remotas:
 
 | Componente | Repositorio | Referencia revisada | Revisión |
 |---|---|---|---|
-| Backend Ktor, código funcional | `ZeroVeCC/MapaUrbano-backend-ktor` | `main` | `b2dbaa026f82377008e23e13d448dced61a0abce` |
+| Backend Ktor actual | `ZeroVeCC/MapaUrbano-backend-ktor` | `main` | `a33c1fdce1ac0bfc53cf02ae61242c86290bfb2e` |
 | Backend, constancia inicial | mismo repositorio | `main` antes de esta actualización | `56907e566ac834fadef9bbb4982a522fc71f7c77` |
 | Android standalone integrado | `Jquincal/Mapaurbano_frontend_kotlin` | `main` | `8c866deb2a7bdff1a112baf34f319b17be099822` |
 | Android, base Stitch incorporada | mismo repositorio | commit antecesor en `main` | `0a26dd4` |
@@ -139,6 +139,12 @@ El Swagger del backend dejó de describir solamente el registro y login ciudadan
 
 Cada operación declara además su estado real mediante `x-implementation-status`: implementada, parcial, stub 501, bloqueada por autenticación administrativa o placeholder. De esta forma el contrato puede compartirse con Android y web sin presentar como terminadas las rutas que aún no funcionan. Se agregó `docs/SWAGGER.md` como guía de uso y una prueba automatizada que analiza el YAML, comprueba la cobertura de rutas, la unicidad de `operationId`, los estados y todas las referencias locales.
 
+### 4.11. 15 de octubre: reescaneo y cambio de política de privacidad
+
+Se descargaron nuevamente las referencias remotas de los cuatro repositorios. Android, web, `main` y `develop` del monorepo no presentan commits posteriores a los ya auditados. El backend agregó únicamente la auditoría y el contrato OpenAPI desde su última revisión funcional.
+
+La prueba en dispositivos motivó una política nueva: cuenta obligatoria, cada ciudadano ve solo sus reportes y únicamente los administradores ven el conjunto completo. El código actual implementa el alcance anterior, que permitía mapa público y reportes anónimos. Frente al requisito nuevo, la API expone indebidamente listado, detalle e imagen sin autorización, y Android consume y mezcla esos datos. El diagnóstico, la matriz de acceso, las tareas por repositorio y dos mensajes listos para los equipos quedaron en `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md`.
+
 ## 5. Monorepo original: qué conserva y cómo usarlo
 
 Repositorio: `Jquincal/Mapa-Urbano`.
@@ -239,10 +245,10 @@ No existe una tabla persistente de sesiones administrativas ni una tabla outbox 
 | `GET /health/ready` | parcial | responde 200; todavía no verifica la base |
 | `GET /swagger` | implementada | expone el contrato OpenAPI 3.0.3 completo y el estado real de cada operación |
 | `GET /api/v1/categories` | implementada | catálogo desde PostgreSQL |
-| `GET /api/v1/reports` | implementada/parcial | lista pública y bbox; cursor sin aplicar |
-| `POST /api/v1/reports` | implementada/parcial | multipart, cuenta o anónimo, imagen con limitaciones |
-| `GET /api/v1/reports/{id}` | implementada/parcial | detalle público, historial incompleto |
-| `GET /api/v1/reports/{id}/image` | implementada | binario desde base de datos |
+| `GET /api/v1/reports` | implementada/parcial y en conflicto de privacidad | lista todos los reportes sin exigir sesión; debe cerrarse bajo la política nueva |
+| `POST /api/v1/reports` | implementada/parcial y en conflicto de privacidad | permite cuenta o anónimo; debe exigir Bearer si se confirma cuenta obligatoria |
+| `GET /api/v1/reports/{id}` | implementada/parcial y en conflicto de privacidad | detalle sin sesión ni pertenencia |
+| `GET /api/v1/reports/{id}/image` | implementada y en conflicto de privacidad | descarga sin sesión ni pertenencia |
 | `POST /api/v1/report-status` | implementada | seguimiento anónimo por código |
 | `POST /api/v1/users/register` | implementada | DNI + contraseña |
 | `POST /api/v1/users/login` | implementada | devuelve token Bearer opaco |
@@ -309,12 +315,13 @@ No cubre todavía el flujo administrativo HTTP, sesiones admin reales, procesami
 
 #### Prioridad crítica
 
-1. **Autenticación administrativa inutilizable:** todo el grupo `/admin`, incluido el login, está dentro de `authenticate("admin-session")`; una persona no autenticada no puede iniciar sesión.
-2. **Falta instalar/configurar `Sessions`:** el código usa `call.sessions`, pero no hay transporte de cookie, firma ni configuración efectiva.
-3. **Validador admin incompleto:** confía en la sesión deserializada y no la contrasta con una sesión persistida.
-4. **Sesión admin en memoria:** `AdminSessionRepositoryImpl` usa `ConcurrentHashMap`; un reinicio la elimina.
-5. **No hay administrador inicial:** no existe seed ni mecanismo documentado de bootstrap.
-6. **No hay E2E automatizado cliente-servidor:** Android ya consume el backend y fue recorrido en dispositivo según su documentación, pero falta una prueba reproducible dentro de CI.
+1. **Autorización ciudadana incompatible con la política nueva:** listado, detalle e imagen son públicos. La corrección debe hacerse en backend; un filtro Android no constituye un control de acceso.
+2. **Autenticación administrativa inutilizable:** todo el grupo `/admin`, incluido el login, está dentro de `authenticate("admin-session")`; una persona no autenticada no puede iniciar sesión.
+3. **Falta instalar/configurar `Sessions`:** el código usa `call.sessions`, pero no hay transporte de cookie, firma ni configuración efectiva.
+4. **Validador admin incompleto:** confía en la sesión deserializada y no la contrasta con una sesión persistida.
+5. **Sesión admin en memoria:** `AdminSessionRepositoryImpl` usa `ConcurrentHashMap`; un reinicio la elimina.
+6. **No hay administrador inicial:** no existe seed ni mecanismo documentado de bootstrap.
+7. **No hay E2E automatizado cliente-servidor:** Android ya consume el backend y fue recorrido en dispositivo según su documentación, pero falta una prueba reproducible dentro de CI.
 
 #### Prioridad alta
 
@@ -346,7 +353,7 @@ No cubre todavía el flujo administrativo HTTP, sesiones admin reales, procesami
 13. Algunos mensajes/comentarios muestran mojibake, con riesgo de respuestas mal codificadas.
 14. Ktor no sirve todavía el build de Angular, requisito original RF-14.
 
-## 7. Android: estado completo actualizado al 14 de octubre
+## 7. Android: estado completo actualizado al 15 de octubre
 
 ### 7.1. Integración en `main`
 
@@ -444,6 +451,10 @@ El workflow `android.yml` ejecuta `scripts/validate.sh`, que comprueba secretos 
 
 GitHub Actions `38567264700`, sobre `8c866de`, terminó correctamente el 14 de octubre de 2026. La auditoría local no pudo repetir Gradle porque esta computadora no tiene Android SDK configurado; el intento alcanzó la configuración de Gradle y se detuvo con `SDK location not found`. El resultado remoto verde es la evidencia de compilación disponible.
 
+### 7.8. Reescaneo de privacidad
+
+El `main` Android no cambió desde la auditoría anterior. La aplicación sigue abriendo en el mapa, consulta el listado global sin Bearer, conserva alta anónima y seguimiento por código, y combina reportes propios con los públicos. La versión con cuenta obligatoria mencionada durante las pruebas todavía no está en ninguna rama remota visible. Bajo la política nueva, Android debe esperar la restauración de sesión, consumir exclusivamente rutas propias y borrar los datos de la cuenta anterior al cerrar o cambiar sesión.
+
 ## 8. Frontend web: estado completo
 
 ### 8.1. Plataforma y estructura
@@ -483,10 +494,10 @@ El dashboard crea popups mediante `setHTML` e interpolación. Con constantes loc
 
 ### 8.4. Compilación y pruebas
 
-La compilación de producción del 13 de octubre fue correcta:
+La compilación de producción se repitió correctamente el 15 de octubre:
 
-- bundle inicial: 408,88 kB sin comprimir;
-- transferencia estimada: 92,11 kB;
+- bundle inicial: 409,17 kB sin comprimir;
+- transferencia estimada: 92,24 kB;
 - advertencia: `reports.css` pesa 4,27 kB y excede en 272 bytes el presupuesto de 4 kB.
 
 Resultado de pruebas:
@@ -497,13 +508,16 @@ Resultado de pruebas:
 
 Los fallos son dos pruebas de `App` y una de `Sidebar`, inicialmente por no proveer `ActivatedRoute`. Además, una aserción de título espera `Hello, mapa-urbano`, texto que ya no existe en `app.html`. Son pruebas desactualizadas respecto de la navegación actual.
 
+No hay commits, ramas remotas nuevas, pull requests ni workflow desde la revisión anterior. El panel continúa sin conexión y debe consumir únicamente `/api/v1/admin/*` cuando la autenticación administrativa esté reparada.
+
 ## 9. Compatibilidad entre los tres componentes
 
 | Tema | Backend | Android `main` | Web | Consecuencia |
 |---|---|---|---|---|
 | identidad ciudadana | DNI + contraseña | DNI + contraseña real | no aplica al vecino | contrato Android/backend alineado |
 | administrador | sesión pretendida, incompleta | no aplica | sin login | panel no puede autenticarse |
-| fuente de datos | PostgreSQL/PostGIS | API real; fakes solo en pruebas | constantes locales | ciudadano conectado; administración no |
+| fuente de datos | PostgreSQL/PostGIS | API real; fakes solo en pruebas | constantes locales | Android consume hoy datos globales; administración no está conectada |
+| privacidad de reportes | listado/detalle/imagen públicos | carga y mezcla reportes globales | todavía sin API | incompatible con la nueva regla de reportes propios |
 | categorías | 6 slugs en español singular | catálogo remoto por ID y slug | 5 categorías locales | Android alineado; web pendiente |
 | ID de reporte | UUID | UUID recibido del backend | números locales | Android alineado; web pendiente |
 | tracking | código opaco del servidor | endpoint real | no implementado | flujo ciudadano integrado |
@@ -534,33 +548,33 @@ Estados usados: **cumplido**, **parcial**, **pendiente** o **bloqueado**.
 
 | Req. | Objetivo resumido | Estado observado | Evidencia/deuda |
 |---|---|---|---|
-| RF-01 | mapa Android con reportes | cumplido | MapLibre muestra reportes públicos del backend |
+| RF-01 | mapa Android con reportes | parcial/incompatible | MapLibre funciona, pero muestra reportes globales en vez de solo los propios |
 | RF-02 | iniciar desde punto del mapa | cumplido | selector táctil y GPS producen coordenadas reales |
 | RF-03 | formulario completo y foto | parcial alto | formulario/multipart reales; foto todavía simulada |
-| RF-04 | detalle y estado ciudadano | cumplido en flujo público | detalle y tracking conectados; detalle privado sigue 501 |
+| RF-04 | detalle y estado ciudadano | parcial/incompatible | usa detalle público sin pertenencia; detalle privado sigue 501 |
 | RF-05 | filtros por categoría/estado | parcial alto | Android filtra datos reales; web continúa local |
 | RF-06 | admin cambia estado | parcial/bloqueado | operación atómica existe; auth admin impide flujo real |
 | RF-07 | tabla paginada y mapa admin | parcial | UI demo; API/listado admin pendientes |
 | RF-08 | totales/distribuciones | parcial | UI fija; backend devuelve vacío |
 | RF-09 | foto binaria y metadatos | parcial | esquema/repositorio existen; validación/atomicidad incompletas |
 | RF-10 | eliminar con auditoría | parcial | use case existe; flujo y transacción completa pendientes |
-| RF-11 | código para anónimo | cumplido | backend genera y Android presenta el código real |
-| RF-12 | consultar por código | cumplido | Android consume `POST /report-status` |
+| RF-11 | código para anónimo | implementado bajo alcance anterior | debe retirarse si se confirma cuenta obligatoria |
+| RF-12 | consultar por código | implementado bajo alcance anterior | debe desactivarse o limitarse a una transición de históricos |
 | RF-13 | evento WS tras commit | parcial | estado publica evento; bus no persistente y clientes ausentes |
 | RF-14 | Ktor sirve Angular | pendiente | no hay static content del build web |
 | RF-15 | asignar/reasignar | parcial | dominio/repositorio; UI/API real incompletas |
 | RF-16 | prioridad y fecha objetivo | parcial | dominio/esquema; flujo admin no operativo |
 | RF-17 | historial de asignación/prioridad | parcial | tablas existen; garantías transaccionales incompletas |
 | RF-18 | registro/login/sesión/logout vecino | cumplido | DNI y Bearer integrados en Android/backend |
-| RF-19 | listar y consultar reportes propios | parcial alto | listado Android integrado; cursor y detalle privado pendientes |
-| RF-20 | elegir cuenta o anónimo | cumplido | Android y backend respetan la elección |
+| RF-19 | listar y consultar reportes propios | parcial crítico | lista propia existe, pero Android también conserva globales; cursor y detalle privado pendientes |
+| RF-20 | elegir cuenta o anónimo | en conflicto con política nueva | está implementado, pero el requisito nuevo pide cuenta obligatoria |
 | RF-21 | autor desde sesión, no cliente | cumplido en backend | cubierto por implementación/pruebas |
 
 ## 11. Matriz de requisitos no funcionales
 
 | Req. | Estado | Observación |
 |---|---|---|
-| RNF-01, mapa ≤3 s/200 reportes | pendiente | sin mapa/API integrados ni prueba de carga |
+| RNF-01, mapa ≤3 s/200 reportes | pendiente | mapa/API integrados, pero sin prueba de carga |
 | RNF-02, responsive 360 dp/375 px | parcial | diseños existen; falta validación sistemática |
 | RNF-03, admin y cookie segura | bloqueado | sesión Ktor no configurada |
 | RNF-04, CRUD p95 <500 ms | pendiente | no hay prueba de carga |
@@ -573,7 +587,7 @@ Estados usados: **cumplido**, **parcial**, **pendiente** o **bloqueado**.
 | RNF-11, concurrencia optimista | parcial | estado mejor cubierto; otras operaciones no |
 | RNF-12, binario fuera de listados | cumplido en diseño/backend | imagen usa endpoint específico |
 | RNF-13, secretos no expuestos | parcial alto | BCrypt/token hash correctos; Android guarda Bearer en DataStore sin cifrado propio; defaults/admin pendientes |
-| RNF-14, privacidad pública/WS | parcial | DTO públicos no deben filtrar identidad; falta prueba integral WS |
+| RNF-14, privacidad pública/WS | crítico bajo política nueva | listado, detalle e imagen globales siguen accesibles sin pertenencia |
 
 ## 12. Ruta recomendada desde este estado
 
@@ -590,16 +604,29 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 
 **Salida:** los dos frontends pueden generar modelos contra un contrato estable.
 
+### Fase 0.5 — aplicar la nueva política de privacidad
+
+- [ ] Confirmar formalmente cuenta obligatoria y retiro del modo anónimo.
+- [ ] Definir que los reportes anónimos históricos sean visibles solo para administradores.
+- [ ] Exigir Bearer para crear, listar, abrir y descargar imágenes ciudadanas.
+- [ ] Implementar pertenencia en detalle e imagen, devolviendo 404 genérico para recursos ajenos.
+- [ ] Desactivar listado/detalle/imagen públicos y revisar `/ws/public`.
+- [ ] Hacer que Android espere sesión y consuma únicamente `users/me/reports`.
+- [ ] Reservar la lectura global para `/api/v1/admin/*`.
+- [ ] Probar dos cuentas y un administrador contra la misma base.
+
+**Salida:** ningún ciudadano ni cliente sin sesión puede conocer reportes de otra cuenta.
+
 ### Fase 1 — cerrar el flujo ciudadano del backend
 
 - [ ] Rechazar coordenadas ausentes/no numéricas en lugar de convertirlas a cero.
 - [ ] Corregir cursores y mapeo de categoría/imagen en reportes propios.
 - [ ] Implementar detalle propio.
-- [ ] Completar `hasImage` e historial público.
+- [ ] Completar `hasImage` e historial visible del reporte propio.
 - [ ] Hacer atómica la creación de reporte + imagen.
 - [ ] Validar firma, tamaño y dimensiones de archivos sin cargar innecesariamente todo en memoria.
 
-**Salida:** registro, login, alta anónima/asociada, lista, detalle, imagen y seguimiento estables.
+**Salida:** registro, login, alta asociada, lista, detalle e imagen propios estables.
 
 ### Fase 2 — corregir seguridad administrativa
 
@@ -632,6 +659,10 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 - [x] Mantener visible el mapa cuando no hay resultados.
 - [x] Diferenciar red, 400, 401, 409, 429 y 500.
 - [x] Incorporar MapLibre, selección manual y ubicación GPS.
+- [ ] Publicar en GitHub el cambio de cuenta obligatoria mencionado por el equipo.
+- [ ] Esperar la restauración de sesión antes de mostrar/cargar el mapa.
+- [ ] Retirar el listado/detalle global, modo anónimo y seguimiento por código.
+- [ ] Limpiar todos los datos privados al cerrar o cambiar de cuenta.
 - [ ] Adjuntar fotografías reales y mostrar la imagen recuperada.
 - [ ] Corregir paginación y usar el detalle privado cuando el backend lo implemente.
 - [ ] Automatizar una prueba de contrato/E2E contra Docker.
@@ -666,14 +697,15 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 
 Si el objetivo inmediato es mostrar una demostración funcional, el orden mínimo aconsejado es:
 
-1. autenticación admin;
-2. endpoints admin sin 501;
-3. web real;
-4. cerrar foto/paginación/detalle propio en el flujo ciudadano;
-5. E2E con Docker para Android y web;
-6. seguridad, rendimiento y despliegue.
+1. cerrar listado, detalle e imagen ciudadanos por sesión y pertenencia;
+2. mover Android a cuenta obligatoria y rutas propias;
+3. autenticación admin;
+4. endpoints admin sin 501;
+5. web real;
+6. cerrar foto/paginación/detalle propio y ejecutar E2E con dos usuarios y un administrador;
+7. rendimiento y despliegue.
 
-Android ya superó la etapa de pantallas simuladas para el recorrido principal. El foco de integración debe trasladarse al panel administrativo y a las partes concretas que continúan incompletas.
+Android ya superó la etapa de pantallas simuladas, pero la privacidad debe corregirse antes de continuar la integración funcional. Después, el foco puede trasladarse al panel administrativo y a las partes concretas que continúan incompletas.
 
 ## 14. Evidencia reproducible
 
@@ -725,14 +757,17 @@ Se verificaron ramas, commits, pull requests y ejecuciones mediante metadatos p�
 6. Ejecutar pruebas unitarias e integración antes de subir cambios que afecten persistencia o rutas.
 7. Subir los cambios autorizados al `main` del backend y comprobar GitHub Actions.
 8. Actualizar esta constancia cuando cambie un hito estructural, una referencia revisada o el estado de integración.
+9. La política solicitada el 15 de octubre exige cuenta ciudadana y visibilidad por pertenencia; hasta implementarla, las rutas públicas de reportes deben considerarse un riesgo crítico.
+10. Usar `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md` como plan coordinado para backend, Android y web.
 
 ## 16. Conclusión técnica
 
-El backend ya funciona como centro del recorrido ciudadano y Android dejó de ser una maqueta: usa la API real, DNI, MapLibre y GPS desde su `main`. El panel web sigue siendo demostrativo y la administración del backend continúa bloqueada por sesiones/rutas incompletas. El proyecto se considerará integrado de extremo a extremo cuando el panel reemplace sus datos locales, la administración pueda autenticarse, se cierren foto/paginación/detalle propio y una prueba reproducible recorra ambos clientes sin rutas necesarias en 501.
+El backend ya funciona como centro del recorrido ciudadano y Android dejó de ser una maqueta, pero ambos conservan el modelo anterior de mapa público y alta anónima. La prioridad inmediata es imponer pertenencia en el servidor y mover Android a un flujo de cuenta obligatoria. El panel web sigue siendo demostrativo y la administración del backend continúa bloqueada por sesiones/rutas incompletas. El proyecto se considerará integrado de extremo a extremo cuando la privacidad se haga cumplir en API, Android consuma solo recursos propios, el panel use rutas administrativas reales y una prueba con dos ciudadanos y un administrador confirme el aislamiento.
 
 Esta constancia debe leerse junto con:
 
 - `docs/AUTENTICACION_DNI.md` para el contrato ciudadano actual;
 - `docs/INTEGRACION_REPOSITORIOS_2026-10-06.md` como revisión anterior;
 - `docs/ESTADO_ACTUAL_Y_DECISIONES.md` para las decisiones del backend;
+- `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md` para el diagnóstico de visibilidad y las tareas separadas por equipo;
 - la rama `develop` del monorepo original para requisitos y alcance.
