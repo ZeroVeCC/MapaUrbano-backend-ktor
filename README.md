@@ -6,11 +6,13 @@ Este repositorio contiene el backend independiente (standalone) del proyecto Map
 
 La [revisión de integración del 6 de octubre](docs/INTEGRACION_REPOSITORIOS_2026-10-06.md) queda como antecedente histórico de las ramas y diferencias detectadas antes de conectar Android.
 
-La **[constancia de auditoría integral, actualizada el 14 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, incluida la integración Android del PR #1, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
+La **[constancia de auditoría integral, actualizada el 18 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, incluida la integración Android del PR #1, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
 
 La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo probar la API desde `http://localhost:8080/swagger`, cómo autorizarse con el token ciudadano y cómo interpretar el estado real de cada endpoint.
 
 El **[reescaneo y plan de privacidad del 15 de octubre](docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md)** registra las revisiones actuales de los cuatro repositorios, el problema de visibilidad global de reportes y las tareas separadas para backend, Android y web.
+
+El **[reescaneo específico del frontend web del 18 de octubre](docs/REESCANEO_WEB_2026-10-18.md)** compara los tres commits nuevos con Swagger, registra build, pruebas y GitHub Actions, y deja el trabajo pendiente priorizado para el responsable web.
 
 ## 🏗 Arquitectura y Tecnologias
 

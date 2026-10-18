@@ -2,7 +2,7 @@
 
 **Fecha de corte original:** 13 de octubre de 2026
 
-**Última actualización:** 15 de octubre de 2026, después del reescaneo de repositorios y la revisión de privacidad
+**Última actualización:** 18 de octubre de 2026, después del reescaneo específico del frontend web
 
 **Responsable de esta constancia:** revisión técnica realizada sobre los repositorios publicados de Mapa Urbano  
 **Repositorio donde se conserva:** `ZeroVeCC/MapaUrbano-backend-ktor`  
@@ -16,9 +16,9 @@ El proyecto tiene una base técnica amplia. Desde el 14 de octubre Android y bac
 
 - El **backend Ktor** es el componente más avanzado. Compila, sus 47 pruebas pasan, levanta PostgreSQL/PostGIS con Testcontainers y ya resolvió la escritura y lectura de coordenadas. Sin embargo, el reescaneo confirmó que listado, detalle e imagen de reportes siguen siendo públicos; esto contradice la nueva política solicitada de que cada ciudadano vea únicamente sus reportes.
 - El **frontend Android publicado en `main`** ya incorporó Stitch, cliente REST Ktor/OkHttp, autenticación por DNI, token Bearer en DataStore, MapLibre/OpenFreeMap, GPS y los flujos ciudadanos principales contra el backend. Continúa exactamente en `8c866de`: carga el listado público al iniciar, permite anónimos y mezcla reportes globales con propios. El cambio de cuenta obligatoria mencionado por el equipo todavía no está publicado.
-- El **frontend web** compila para producción y contiene un panel visual completo, pero todos sus datos son locales. No tiene integración HTTP, WebSocket, login real, guardas ni manejo de sesión. Tres de sus ocho pruebas fallan.
+- El **frontend web** avanzó con login, guarda, servicios HTTP, `withCredentials`, WebSocket y clientes administrativos. Compila y sus 8 pruebas pasan localmente, pero los modelos no coinciden con OpenAPI, conserva fallbacks que simulan escrituras y su CI falla en las tres ejecuciones publicadas.
 - El **monorepo original** sigue siendo la fuente del alcance, arquitectura, requisitos y decisiones iniciales. Sus ramas posteriores no están consolidadas en `main`; por eso no debe tomarse `main` de ese repositorio como el estado actual del producto.
-- El contrato ciudadano entre Android y backend coincide en los DTO y rutas revisados. Las barreras principales pasan a ser la autenticación/API administrativa, el panel web sin conexión, fotografías reales, paginación/historial incompletos y una prueba E2E reproducible.
+- El contrato ciudadano entre Android y backend coincide en los DTO y rutas revisados. Las barreras principales pasan a ser la autenticación/API administrativa, la corrección del contrato web, fotografías reales, paginación/historial incompletos y una prueba E2E reproducible.
 
 ## 2. Alcance y método de revisión
 
@@ -31,7 +31,7 @@ Se revisaron estos repositorios y referencias remotas:
 | Android standalone integrado | `Jquincal/Mapaurbano_frontend_kotlin` | `main` | `8c866deb2a7bdff1a112baf34f319b17be099822` |
 | Android, base Stitch incorporada | mismo repositorio | commit antecesor en `main` | `0a26dd4` |
 | Android, integración REST/mapa | mismo repositorio | commit antecesor en `main` | `9a8e2170cbacf6bdaf8331240959e94256436aa4` |
-| Frontend web | `Santy112/MapaUrbano-frontend-web` | `main` | `7ba06ad` |
+| Frontend web | `Santy112/MapaUrbano-frontend-web` | `main` | `85832a4183d6d1fde96b49161bee1142445f3cc6` |
 | Monorepo original | `Jquincal/Mapa-Urbano` | `main` | `13150ab` |
 | Documentación original vigente | mismo repositorio | `develop` | `9b28a7e` |
 | Backend anterior dentro del monorepo | mismo repositorio | `feat/MU-004-backend-ktor-exposed` | `a04651d` |
@@ -54,7 +54,7 @@ Los binarios se verificaron por ubicación, tipo y tamaño, sin pretender interp
 |---|---:|---|
 | Backend `main` | 127 | 106 archivos Kotlin, 5.658 líneas; 3 migraciones SQL; OpenAPI; Docker; CI |
 | Android `main` actualizado | 79 | 35 archivos Kotlin, 6.020 líneas; REST, MapLibre, GPS, DataStore y 4 fuentes Inter |
-| Web `main` | 46 | 17 TypeScript, 8 HTML y 8 CSS; 2.048 líneas aproximadas entre esos grupos |
+| Web `main` | 60 | 29 TypeScript, 9 HTML y 9 CSS; 2.904 líneas aproximadas entre esos grupos |
 | Monorepo `develop` | documentación y base histórica | 20 Kotlin, 24 Markdown y 3 SQL; 27 commits visibles en el conjunto de ramas |
 
 Estas cifras sirven para dimensionar el trabajo. No representan porcentaje de producto terminado.
@@ -144,6 +144,12 @@ Cada operación declara además su estado real mediante `x-implementation-status
 Se descargaron nuevamente las referencias remotas de los cuatro repositorios. Android, web, `main` y `develop` del monorepo no presentan commits posteriores a los ya auditados. El backend agregó únicamente la auditoría y el contrato OpenAPI desde su última revisión funcional.
 
 La prueba en dispositivos motivó una política nueva: cuenta obligatoria, cada ciudadano ve solo sus reportes y únicamente los administradores ven el conjunto completo. El código actual implementa el alcance anterior, que permitía mapa público y reportes anónimos. Frente al requisito nuevo, la API expone indebidamente listado, detalle e imagen sin autorización, y Android consume y mezcla esos datos. El diagnóstico, la matriz de acceso, las tareas por repositorio y dos mensajes listos para los equipos quedaron en `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md`.
+
+### 4.12. 16 a 18 de octubre: primera integración del panel web
+
+El frontend web publicó tres commits que agregan CI, login, guarda, `HttpClient`, servicios administrativos, WebSocket y correcciones de XSS. El build de producción pasó y las ocho pruebas locales quedaron verdes.
+
+El reescaneo del 18 de octubre detectó que esta capa todavía no coincide con OpenAPI: usa números para UUID, enums inexistentes, paginación por página en vez de cursor y DTO incompatibles para autenticación, equipos, estadísticas y auditoría. Además, los servicios convierten varios errores del servidor en éxitos simulados. Las tres ejecuciones nuevas de GitHub Actions fallaron por usar `--browsers=ChromeHeadless` sin proveedor Vitest. El análisis completo quedó en `docs/REESCANEO_WEB_2026-10-18.md`.
 
 ## 5. Monorepo original: qué conserva y cómo usarlo
 
@@ -459,7 +465,7 @@ El `main` Android no cambió desde la auditoría anterior. La aplicación sigue 
 
 ### 8.1. Plataforma y estructura
 
-El panel usa Angular 22, TypeScript 6, MapLibre y Leaflet. Contiene rutas y componentes para:
+El panel usa Angular 22, TypeScript 6, MapLibre y Leaflet. En `main` se publicaron tres commits nuevos entre el 16 y el 17 de octubre, llevando la revisión de `7ba06ad` a `85832a4`. Contiene rutas y componentes para:
 
 - dashboard;
 - reportes;
@@ -468,66 +474,73 @@ El panel usa Angular 22, TypeScript 6, MapLibre y Leaflet. Contiene rutas y comp
 - auditoría;
 - sidebar y estructura general.
 
-### 8.2. Funcionalidad visual existente
+También agregó una capa `core` con modelos, guarda y servicios para autenticación, reportes, categorías, estadísticas, auditoría, equipos y WebSocket.
 
-- dashboard con mapa MapLibre 3D, cuatro marcadores y tarjetas de métricas;
-- listado/fichas de cinco reportes;
-- cambio de estado local;
-- imágenes locales de demostración;
-- catálogo local de cinco categorías con alta y eliminación en memoria;
-- estadísticas fijas, por ejemplo un total de 42;
-- siete eventos de auditoría simulados y filtro visual;
-- navegación lateral y diseño adaptable.
+### 8.2. Avances confirmados
 
-### 8.3. Integración ausente
+- `HttpClient` y archivos de entorno para REST/WebSocket;
+- pantalla de login, guarda sobre todas las rutas administrativas y logout;
+- uso de `withCredentials` en las solicitudes;
+- servicios iniciales para todas las áreas administrativas;
+- manejo visual de carga, filtros y conflicto 409 en reportes;
+- corrección de los popups MapLibre mediante `setDOMContent` y `textContent`;
+- ocho pruebas locales correctas;
+- build de producción correcto y sin la advertencia CSS anterior;
+- workflow de GitHub Actions agregado.
 
-- No está configurado `HttpClient` ni existen servicios API.
-- No hay login administrativo.
-- No hay guardas de rutas.
-- No hay cookies, CSRF ni renovación/verificación de sesión.
-- No hay cliente WebSocket.
-- Los cambios desaparecen al recargar.
-- No se consumen categorías, reportes, imágenes, estadísticas ni auditoría del backend.
-- No hay workflow de GitHub Actions.
+### 8.3. Integración todavía pendiente
 
-El dashboard crea popups mediante `setHTML` e interpolación. Con constantes locales no produce un incidente actual; al conectar datos de API sería una vía XSS si no se escapa o reemplaza por nodos seguros.
+- Los DTO TypeScript no coinciden con OpenAPI: UUID está modelado como número, aparecen estado `REJECTED` y prioridad `CRITICAL`, la paginación usa página en vez de cursor y varias respuestas tienen nombres distintos.
+- Los servicios sustituyen fallos reales por reportes, categorías, estadísticas, equipos y auditoría simulados.
+- Login simula acceso administrativo ante 501 o falta de red.
+- Cambio de estado, creación/activación de categorías y eliminación de reportes pueden aparentar éxito aunque el servidor falle.
+- El detalle reutiliza el resumen y no consulta `/admin/reports/{id}`.
+- No hay descarga administrativa de imagen.
+- Prioridad, fecha objetivo, asignación y desasignación no están conectadas.
+- El método de baja no tiene un control visible que lo invoque.
+- El dashboard sigue usando marcadores y contadores fijos.
+- El servicio WebSocket existe, pero ningún componente llama a `connect()`.
+- No hay interceptor global 401/403, CSRF ni limpieza central de todos los datos al vencer la sesión.
+- Equipos, estadísticas y auditoría tienen contratos incompatibles con Swagger.
+
+El backend todavía bloquea la autenticación administrativa, responde 501 en listados/detalle y no expone imagen administrativa. El panel debe conservar estados de error honestos mientras esas rutas no existan; no debe presentar fallbacks como datos persistidos.
 
 ### 8.4. Compilación y pruebas
 
-La compilación de producción se repitió correctamente el 15 de octubre:
+La compilación de producción se repitió correctamente el 18 de octubre:
 
-- bundle inicial: 409,17 kB sin comprimir;
-- transferencia estimada: 92,24 kB;
-- advertencia: `reports.css` pesa 4,27 kB y excede en 272 bytes el presupuesto de 4 kB.
+- bundle inicial: 369,45 kB sin comprimir;
+- transferencia estimada: 87,04 kB;
+- sin advertencias de presupuesto.
 
-Resultado de pruebas:
+`ng test --watch=false` produjo:
 
 - 8 pruebas totales;
-- 5 correctas;
-- 3 fallidas.
+- 8 correctas;
+- 0 fallidas.
 
-Los fallos son dos pruebas de `App` y una de `Sidebar`, inicialmente por no proveer `ActivatedRoute`. Además, una aserción de título espera `Hello, mapa-urbano`, texto que ya no existe en `app.html`. Son pruebas desactualizadas respecto de la navegación actual.
+Las pruebas continúan siendo casi exclusivamente smoke tests de creación de componentes. No cubren servicios, guarda, cookie, errores HTTP, mutaciones, conflictos, WebSocket ni cierre de sesión.
 
-No hay commits, ramas remotas nuevas, pull requests ni workflow desde la revisión anterior. El panel continúa sin conexión y debe consumir únicamente `/api/v1/admin/*` cuando la autenticación administrativa esté reparada.
+Las tres ejecuciones de GitHub Actions (`38993082920`, `38998284342` y `38999555595`) fallaron. El workflow usa `--browsers=ChromeHeadless` con el builder Vitest sin instalar un proveedor de navegador. El comando compatible `npm test -- --watch=false` debe reemplazarlo o se debe instalar/configurar un proveedor. El detalle completo del reescaneo y el plan para web se conservan en `docs/REESCANEO_WEB_2026-10-18.md`.
 
 ## 9. Compatibilidad entre los tres componentes
 
 | Tema | Backend | Android `main` | Web | Consecuencia |
 |---|---|---|---|---|
 | identidad ciudadana | DNI + contraseña | DNI + contraseña real | no aplica al vecino | contrato Android/backend alineado |
-| administrador | sesión pretendida, incompleta | no aplica | sin login | panel no puede autenticarse |
-| fuente de datos | PostgreSQL/PostGIS | API real; fakes solo en pruebas | constantes locales | Android consume hoy datos globales; administración no está conectada |
-| privacidad de reportes | listado/detalle/imagen públicos | carga y mezcla reportes globales | todavía sin API | incompatible con la nueva regla de reportes propios |
-| categorías | 6 slugs en español singular | catálogo remoto por ID y slug | 5 categorías locales | Android alineado; web pendiente |
-| ID de reporte | UUID | UUID recibido del backend | números locales | Android alineado; web pendiente |
+| administrador | sesión pretendida, incompleta | no aplica | login/guarda/servicio creados, contrato incompatible y backend bloqueado | panel todavía no puede autenticarse realmente |
+| fuente de datos | PostgreSQL/PostGIS | API real; fakes solo en pruebas | servicios HTTP con fallbacks locales | Android consume hoy datos globales; administración todavía simula ante errores |
+| privacidad de reportes | listado/detalle/imagen públicos | carga y mezcla reportes globales | usa rutas `/admin`, pero con acceso local simulado | incompatible con la nueva regla hasta cerrar backend y retirar bypasses |
+| categorías | 6 slugs en español singular | catálogo remoto por ID y slug | servicio admin usa `displayOrder` en vez de `sortOrder` | Android alineado; web rompería alta/respuesta real |
+| ID de reporte | UUID | UUID recibido del backend | modelado como `number` | Android alineado; web incompatible |
 | tracking | código opaco del servidor | endpoint real | no implementado | flujo ciudadano integrado |
-| estados | `pending`, `in_progress`, `resolved` | conversión tolerante a mayúsculas | etiquetas españolas locales | Android alineado; web pendiente |
-| prioridad | enum backend | no modelada de forma operativa | visual/parcial | panel no puede administrarla aún |
+| estados | `PENDING`, `IN_PROGRESS`, `RESOLVED` en JSON | conversión tolerante a mayúsculas | agrega `REJECTED`, no soportado | web puede enviar un valor inválido |
+| prioridad | `LOW`, `MEDIUM`, `HIGH`, `URGENT` | no modelada de forma operativa | usa `CRITICAL` y no implementa mutación | contrato web incorrecto |
 | coordenadas | PostGIS, latitud/longitud reales | MapLibre + GPS + marcadores remotos | marcadores fijos | flujo móvil conectado; web local |
-| fotografías | BYTEA + endpoint específico | selección simulada, sin bytes | archivos públicos locales | falta carga/descarga real en clientes |
-| errores HTTP | envoltorio controlado | distingue red y códigos principales | sin cliente | Android alineado; web pendiente |
-| tiempo real | WebSocket en memoria | sin cliente | sin cliente | actualizaciones no llegan a UI |
-| paginación | incompleta | primera página, sin cursor | no consume | corregir backend antes de habilitarla |
+| fotografías | BYTEA + endpoint específico | selección simulada, sin bytes | `imageUrl` inexistente y archivos fallback | falta endpoint admin y consumo binario real |
+| errores HTTP | envoltorio controlado | distingue red y códigos principales | varios errores se convierten en éxito local | web debe propagar errores y preservar estado |
+| tiempo real | WebSocket en memoria | sin cliente | servicio sin llamada a `connect()` | actualizaciones no llegan a UI |
+| paginación | cursor previsto, admin todavía 501 | primera página, sin cursor | usa page/pageSize | contrato web incompatible |
 
 ### Contratos que deben congelarse antes de integrar
 
@@ -672,13 +685,19 @@ Esta secuencia evita que cada equipo construya contra supuestos diferentes.
 
 ### Fase 5 — integrar web
 
-- [ ] Reparar las tres pruebas y agregar CI.
-- [ ] Crear servicios HTTP y modelos desde OpenAPI.
-- [ ] Implementar login, cookie, guarda e interceptor/CSRF.
-- [ ] Reemplazar todos los arreglos simulados por API.
-- [ ] Sanitizar popups de MapLibre.
-- [ ] Conectar WebSocket con reconexión.
-- [ ] Resolver el presupuesto CSS y revisar accesibilidad/375 px.
+- [x] Reparar las tres pruebas anteriores.
+- [x] Agregar un workflow de CI, aunque su comando de pruebas todavía falla.
+- [x] Crear la primera versión de servicios HTTP, login, guarda y cliente WebSocket.
+- [x] Sanitizar popups de MapLibre.
+- [x] Resolver la advertencia anterior de presupuesto CSS.
+- [ ] Corregir el workflow y obtener una ejecución verde.
+- [ ] Alinear modelos, enums, UUID, filtros y paginación con OpenAPI.
+- [ ] Retirar bypass de login y fallbacks que simulan escrituras en producción.
+- [ ] Completar interceptor 401/403, cookie real y CSRF.
+- [ ] Reemplazar dashboard, detalle, imágenes, equipos, estadísticas y auditoría por API real.
+- [ ] Conectar estado, prioridad, fecha, asignación, baja y WebSocket.
+- [ ] Agregar pruebas de servicios, seguridad, mutaciones y E2E.
+- [ ] Revisar accesibilidad y 375 px.
 
 **Salida:** recorrido administrativo real contra la misma instancia Ktor.
 
@@ -733,15 +752,15 @@ En esta computadora se descargó correctamente Gradle 9.1, pero no se pudo repet
 
 ### Web
 
-En la copia temporal de auditoría se utilizó pnpm por no estar `npm` disponible en PATH:
+En la copia temporal de auditoría se utilizó pnpm para instalar dependencias porque `npm` no estaba disponible en PATH. Las verificaciones de Angular se ejecutaron directamente con el binario local:
 
 ```powershell
-pnpm install
-pnpm exec ng build --configuration production
-pnpm exec ng test --watch=false
+ng build --configuration production
+ng test --watch=false
+ng test --watch=false --browsers=ChromeHeadless
 ```
 
-La compilación pasó y las pruebas quedaron 5/8, con los fallos documentados en la sección 8.4.
+El build pasó y las pruebas quedaron 8/8 con el comando compatible. El comando exacto del workflow falló por no tener un proveedor de navegador Vitest. GitHub confirma tres ejecuciones rojas; el build remoto quedó omitido después del fallo de pruebas.
 
 ### GitHub
 
@@ -762,7 +781,7 @@ Se verificaron ramas, commits, pull requests y ejecuciones mediante metadatos p�
 
 ## 16. Conclusión técnica
 
-El backend ya funciona como centro del recorrido ciudadano y Android dejó de ser una maqueta, pero ambos conservan el modelo anterior de mapa público y alta anónima. La prioridad inmediata es imponer pertenencia en el servidor y mover Android a un flujo de cuenta obligatoria. El panel web sigue siendo demostrativo y la administración del backend continúa bloqueada por sesiones/rutas incompletas. El proyecto se considerará integrado de extremo a extremo cuando la privacidad se haga cumplir en API, Android consuma solo recursos propios, el panel use rutas administrativas reales y una prueba con dos ciudadanos y un administrador confirme el aislamiento.
+El backend ya funciona como centro del recorrido ciudadano y Android dejó de ser una maqueta, pero ambos conservan el modelo anterior de mapa público y alta anónima. La prioridad inmediata es imponer pertenencia en el servidor y mover Android a un flujo de cuenta obligatoria. El panel web avanzó hacia la integración, pero sus contratos todavía no coinciden con OpenAPI, varias acciones simulan éxito y la administración del backend continúa bloqueada por sesiones/rutas incompletas. El proyecto se considerará integrado de extremo a extremo cuando la privacidad se haga cumplir en API, Android consuma solo recursos propios, el panel use rutas administrativas reales sin fallbacks engañosos y una prueba con dos ciudadanos y un administrador confirme el aislamiento.
 
 Esta constancia debe leerse junto con:
 
@@ -770,4 +789,5 @@ Esta constancia debe leerse junto con:
 - `docs/INTEGRACION_REPOSITORIOS_2026-10-06.md` como revisión anterior;
 - `docs/ESTADO_ACTUAL_Y_DECISIONES.md` para las decisiones del backend;
 - `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md` para el diagnóstico de visibilidad y las tareas separadas por equipo;
+- `docs/REESCANEO_WEB_2026-10-18.md` para el último estado publicado del panel web y su plan priorizado;
 - la rama `develop` del monorepo original para requisitos y alcance.
