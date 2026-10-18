@@ -48,23 +48,3 @@ data class StatusHistoryEntry(
     val toStatus: String,
     val changedAt: String,
 )
-
-/* ── Seguimiento anónimo ── */
-
-@Serializable
-data class TrackingCodeRequest(
-    val trackingCode: String,
-)
-
-@Serializable
-data class TrackingCodeResponse(
-    val id: String,
-    val status: String,
-    val categorySlug: String,
-    val latitude: Double,
-    val longitude: Double,
-    val hasImage: Boolean,
-    val createdAt: String,
-    val updatedAt: String,
-    val statusHistory: List<StatusHistoryEntry> = emptyList(),
-)

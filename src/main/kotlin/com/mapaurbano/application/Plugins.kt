@@ -16,6 +16,9 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.plugins.statuspages.exception
 import io.ktor.server.websocket.WebSockets
+import io.ktor.server.sessions.Sessions
+import io.ktor.server.sessions.cookie
+import io.ktor.server.sessions.SessionTransportTransformerMessageAuthentication
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.slf4j.event.Level
@@ -23,7 +26,16 @@ import kotlin.time.Duration.Companion.seconds
 
 fun Application.configurePlugins() {
     val applicationLogger = environment.log
-
+    val allowedHosts = environment.config.propertyOrNull("security.cors.allowedHosts")?.getString()
+        ?: "localhost:3000,localhost:4200,localhost:5173"
+    val parsedAllowedHosts = allowedHosts
+        .split(',').map(String::trim).filter(String::isNotEmpty)
+    val sessionSecret = environment.config.propertyOrNull("security.session.secret")?.getString()
+        ?: "local-development-secret-change-me"
+    require(sessionSecret.length >= 32) {
+        "SESSION_SECRET debe contener al menos 32 caracteres."
+    }
+    val secureCookie = environment.config.propertyOrNull("security.session.secureCookie")?.getString()?.toBoolean() ?: false
 
     install(CORS) {
         allowMethod(HttpMethod.Options)
@@ -32,9 +44,19 @@ fun Application.configurePlugins() {
         allowMethod(HttpMethod.Delete)
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
-        allowHost("localhost:3000")
-        allowHost("localhost:4200")
-        allowHost("localhost:5173")
+        allowHeader("X-CSRF-Token")
+        allowCredentials = true
+        parsedAllowedHosts.forEach { allowHost(it) }
+    }
+
+    install(Sessions) {
+        cookie<AdminSessionCookie>(ADMIN_SESSION_COOKIE) {
+            cookie.path = "/api/v1/admin"
+            cookie.httpOnly = true
+            cookie.secure = secureCookie
+            cookie.extensions["SameSite"] = "Lax"
+            transform(SessionTransportTransformerMessageAuthentication(sessionSecret.toByteArray()))
+        }
     }
 
     install(ContentNegotiation) {

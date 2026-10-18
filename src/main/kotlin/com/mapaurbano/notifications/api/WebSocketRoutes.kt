@@ -16,21 +16,6 @@ fun Route.webSocketRoutes() {
     val eventBus by inject<EventBus>()
     val json = Json { encodeDefaults = true }
 
-    webSocket("/ws/public") {
-        val subscription = eventBus.subscribePublic().onEach { event ->
-            val eventText = json.encodeToString(event)
-            send(Frame.Text(eventText))
-        }.launchIn(this)
-
-        try {
-            for (frame in incoming) {
-                // Not expecting client messages for now
-            }
-        } finally {
-            subscription.cancelAndJoin()
-        }
-    }
-
     authenticate("admin-session") {
         webSocket("/ws/admin") {
             val subscription = eventBus.subscribeAdmin().onEach { event ->

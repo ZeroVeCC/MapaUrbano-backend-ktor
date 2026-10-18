@@ -15,6 +15,10 @@ data class AdminUser(
 data class AdminSession(
     val id: String,
     val adminUserId: String,
+    val csrfToken: String,
     val expiresAt: Instant,
+    val revokedAt: Instant? = null,
     val createdAt: Instant,
-)
+) {
+    fun isValid(now: Instant = Instant.now()): Boolean = revokedAt == null && expiresAt.isAfter(now)
+}

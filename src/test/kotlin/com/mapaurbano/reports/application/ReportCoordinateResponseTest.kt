@@ -7,7 +7,8 @@ import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportRepository
 import com.mapaurbano.reports.domain.ReportStatus
 import com.mapaurbano.users.application.ListUserReportsUseCase
-import java.security.MessageDigest
+import com.mapaurbano.media.domain.ImageRepository
+import com.mapaurbano.media.domain.ReportImage
 import java.time.Instant
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -17,9 +18,6 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 class ReportCoordinateResponseTest {
-    private val trackingCode = "TRACK12345"
-    private val trackingHash = MessageDigest.getInstance("SHA-256")
-        .digest(trackingCode.toByteArray(Charsets.UTF_8))
     private val category = Category(
         id = "category-1",
         slug = "bache",
@@ -27,51 +25,22 @@ class ReportCoordinateResponseTest {
         colorHex = "#FF0000",
         createdAt = Instant.parse("2026-10-07T12:00:00Z"),
     )
-    private val anonymousReport = report(
-        id = "report-anonymous",
-        userId = null,
-        latitude = -32.9113169,
-        longitude = -68.8457851,
-        trackingCodeHash = trackingHash,
-        trackingCodeHint = "TRAC****",
-    )
     private val accountReport = report(
         id = "report-account",
         userId = "user-1",
         latitude = -32.92843591716063,
         longitude = -68.8341889752306,
     )
-    private val reports = FakeReportRepository(listOf(anonymousReport, accountReport))
+    private val reports = FakeReportRepository(listOf(accountReport))
     private val categories = FakeCategoryRepository(category)
 
     @Test
-    fun `all report responses preserve latitude and longitude in JSON`(): Unit = runBlocking {
-        val list = ListPublicReportsUseCase(reports, categories).execute(
-            minLat = -90.0,
-            minLng = -180.0,
-            maxLat = 90.0,
-            maxLng = 180.0,
-            status = null,
-            categorySlug = null,
-            cursor = null,
-        )
-        val detail = GetPublicReportUseCase(reports, categories).execute(anonymousReport.id)
-        val userReports = ListUserReportsUseCase(reports).execute(accountReport.userId!!, cursor = null)
-        val tracking = GetReportByTrackingCodeUseCase(reports, categories).execute(trackingCode)
+    fun `own report response preserves latitude and longitude in JSON`(): Unit = runBlocking {
+        val userReports = ListUserReportsUseCase(reports, categories, EmptyImageRepository()).execute(accountReport.userId!!, cursor = null)
 
-        assertEquals(anonymousReport.latitude, list.items.first().latitude)
-        assertEquals(anonymousReport.longitude, detail.longitude)
         assertEquals(accountReport.latitude, userReports.items.single().latitude)
-        assertEquals(anonymousReport.longitude, tracking.longitude)
 
-        val json = listOf(
-            Json.encodeToString(list),
-            Json.encodeToString(detail),
-            Json.encodeToString(userReports),
-            Json.encodeToString(tracking),
-        ).joinToString("\n")
-        assertContains(json, "\"latitude\":-32.9113169")
-        assertContains(json, "\"longitude\":-68.8457851")
+        val json = Json.encodeToString(userReports)
         assertContains(json, "\"latitude\":-32.92843591716063")
         assertContains(json, "\"longitude\":-68.8341889752306")
     }
@@ -123,7 +92,7 @@ class ReportCoordinateResponseTest {
             adminUserId: String,
             note: String?,
         ) = true
-        override suspend fun updatePriority(id: String, priority: ReportPriority, dueAt: Instant?, version: Long) = true
+        override suspend fun updatePriority(id: String, oldPriority: ReportPriority, priority: ReportPriority, oldDueAt: Instant?, dueAt: Instant?, version: Long, adminUserId: String) = true
         override suspend fun softDelete(id: String) = true
     }
 
@@ -133,5 +102,11 @@ class ReportCoordinateResponseTest {
         override suspend fun findBySlug(slug: String) = category.takeIf { it.slug == slug }
         override suspend fun create(category: Category) = category
         override suspend fun update(category: Category) = true
+    }
+
+    private class EmptyImageRepository : ImageRepository {
+        override suspend fun findByReportId(reportId: String): ReportImage? = null
+        override suspend fun create(image: ReportImage) = image
+        override suspend fun deleteByReportId(reportId: String) = false
     }
 }

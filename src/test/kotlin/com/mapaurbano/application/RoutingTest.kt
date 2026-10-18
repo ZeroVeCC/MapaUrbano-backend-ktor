@@ -55,13 +55,14 @@ class RoutingTest {
 
         val endpoints = listOf(
             Endpoint(HttpMethod.Get, "/api/v1/categories", HttpStatusCode.OK),
-            Endpoint(HttpMethod.Get, "/api/v1/reports", HttpStatusCode.OK),
+            Endpoint(HttpMethod.Get, "/api/v1/reports", HttpStatusCode.MethodNotAllowed),
             Endpoint(HttpMethod.Get, "/api/v1/reports/123", HttpStatusCode.NotFound),
             Endpoint(HttpMethod.Post, "/api/v1/users/logout", HttpStatusCode.Unauthorized),
             Endpoint(HttpMethod.Get, "/api/v1/users/me", HttpStatusCode.Unauthorized),
             Endpoint(HttpMethod.Delete, "/api/v1/users/me", HttpStatusCode.Unauthorized),
             Endpoint(HttpMethod.Get, "/api/v1/users/me/reports", HttpStatusCode.Unauthorized),
             Endpoint(HttpMethod.Get, "/api/v1/users/me/reports/123", HttpStatusCode.Unauthorized),
+            Endpoint(HttpMethod.Get, "/api/v1/users/me/reports/123/image", HttpStatusCode.Unauthorized),
         )
 
         endpoints.forEach { endpoint ->

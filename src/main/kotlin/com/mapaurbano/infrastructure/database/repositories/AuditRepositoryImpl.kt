@@ -8,6 +8,8 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.util.UUID
 
@@ -28,11 +30,20 @@ class AuditRepositoryImpl : AuditRepository {
     }
 
     override suspend fun findAll(cursor: String?, limit: Int): List<AuditEvent> = newSuspendedTransaction(Dispatchers.IO) {
-        // Very basic cursor support based on offset or UUID, ignoring for MVP
-        AuditEventsTable.selectAll()
+        val query = AuditEventsTable.selectAll()
+        cursor?.let { raw ->
+            runCatching { java.time.Instant.parse(raw) }.getOrNull()?.let { instant ->
+                query.andWhere { AuditEventsTable.occurredAt less instant }
+            }
+        }
+        query
             .orderBy(AuditEventsTable.occurredAt to SortOrder.DESC)
             .limit(limit)
             .map { it.toAuditEvent() }
+    }
+
+    override suspend fun count(): Long = newSuspendedTransaction(Dispatchers.IO) {
+        AuditEventsTable.selectAll().count()
     }
 
     private fun ResultRow.toAuditEvent(): AuditEvent = AuditEvent(

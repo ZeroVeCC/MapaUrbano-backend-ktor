@@ -7,15 +7,15 @@ import io.ktor.server.plugins.ratelimit.rateLimit
 import com.mapaurbano.assignments.api.assignmentRoutes
 import com.mapaurbano.assignments.api.teamRoutes
 import com.mapaurbano.audit.api.auditRoutes
-import com.mapaurbano.auth.api.adminAuthRoutes
+import com.mapaurbano.auth.api.adminLoginRoutes
+import com.mapaurbano.auth.api.adminSessionRoutes
 import com.mapaurbano.categories.api.adminCategoryRoutes
 import com.mapaurbano.categories.api.publicCategoryRoutes
 import com.mapaurbano.health.api.healthRoutes
 import com.mapaurbano.media.api.adminImageRoutes
-import com.mapaurbano.media.api.publicImageRoutes
 import com.mapaurbano.notifications.api.webSocketRoutes
 import com.mapaurbano.reports.api.adminReportRoutes
-import com.mapaurbano.reports.api.publicReportRoutes
+import com.mapaurbano.reports.api.authenticatedReportRoutes
 import com.mapaurbano.statistics.api.statisticsRoutes
 import com.mapaurbano.users.api.userRoutes
 import io.ktor.server.application.Application
@@ -32,12 +32,14 @@ fun Application.configureRouting() {
 
         route("/api/v1") {
             publicCategoryRoutes()
+            rateLimit(RateLimitName("auth")) {
+                route("/admin/auth") {
+                    adminLoginRoutes()
+                }
+            }
             
             rateLimit(RateLimitName("public")) {
-                authenticate("user-bearer", optional = true) {
-                    publicReportRoutes()
-                }
-                publicImageRoutes()
+                authenticate("user-bearer") { authenticatedReportRoutes() }
             }
             
             userRoutes()
@@ -45,7 +47,9 @@ fun Application.configureRouting() {
 
             authenticate("admin-session") {
                 route("/admin") {
-                    adminAuthRoutes()
+                    route("/auth") {
+                        adminSessionRoutes()
+                    }
                     adminReportRoutes()
                     adminImageRoutes()
                     assignmentRoutes()

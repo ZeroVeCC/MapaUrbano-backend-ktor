@@ -3,6 +3,8 @@ package com.mapaurbano.auth.domain
 interface AdminUserRepository {
     suspend fun findById(id: String): AdminUser?
     suspend fun findByUsername(username: String): AdminUser?
+    suspend fun findAllActive(): List<AdminUser>
+    suspend fun create(user: AdminUser): AdminUser
     suspend fun updateLastLogin(id: String, lastLoginAt: java.time.Instant)
 }
 

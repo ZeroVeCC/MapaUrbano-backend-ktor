@@ -10,6 +10,8 @@ La **[constancia de auditoría integral, actualizada el 18 de octubre de 2026](d
 
 La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo probar la API desde `http://localhost:8080/swagger`, cómo autorizarse con el token ciudadano y cómo interpretar el estado real de cada endpoint.
 
+El **[cierre del backend y plan de adecuación web del 18 de octubre](docs/CIERRE_BACKEND_Y_PLAN_WEB_2026-10-18.md)** registra la implementación de privacidad, administración, CSRF, consultas, pruebas PostGIS y el mensaje de trabajo que debe recibir el equipo web.
+
 El **[reescaneo y plan de privacidad del 15 de octubre](docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md)** registra las revisiones actuales de los cuatro repositorios, el problema de visibilidad global de reportes y las tareas separadas para backend, Android y web.
 
 El **[reescaneo específico del frontend web del 18 de octubre](docs/REESCANEO_WEB_2026-10-18.md)** compara los tres commits nuevos con Swagger, registra build, pruebas y GitHub Actions, y deja el trabajo pendiente priorizado para el responsable web.
@@ -39,6 +41,9 @@ El servidor esta configurado a traves del archivo src/main/resources/application
 - DATABASE_USER: Usuario de PostgreSQL (por defecto postgres).
 - DATABASE_PASSWORD: Contrasena de PostgreSQL.
 - SESSION_SECRET: Secreto para firmar las sesiones de Ktor.
+- SESSION_SECURE_COOKIE: `true` en producción para limitar la cookie administrativa a HTTPS.
+- CORS_ALLOWED_HOSTS: hosts del frontend separados por coma, sin esquema (por ejemplo `panel.municipio.gob.ar`).
+- ADMIN_BOOTSTRAP_USERNAME y ADMIN_BOOTSTRAP_PASSWORD: crean el primer administrador si ambos están definidos y todavía no existe.
 
 ## 🚀 Como ejecutar el proyecto
 

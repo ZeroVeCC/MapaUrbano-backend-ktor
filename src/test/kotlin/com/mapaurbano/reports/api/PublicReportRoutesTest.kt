@@ -40,16 +40,16 @@ class PublicReportRoutesTest {
     }
 
     @Test
-    fun `GET reports parses query params`() = testApplication {
+    fun `GET reports global is not available to citizens`() = testApplication {
         application { configureTestApplication() }
 
         val response = client.get("/api/v1/reports?minLat=-35&maxLat=-34&minLng=-59&maxLng=-58")
 
-        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(HttpStatusCode.MethodNotAllowed, response.status)
     }
 
     @Test
-    fun `POST reports accepts multipart`() = testApplication {
+    fun `POST reports requires citizen authentication`() = testApplication {
         application { configureTestApplication() }
 
         val response = client.post("/api/v1/reports") {
@@ -65,11 +65,11 @@ class PublicReportRoutesTest {
             ))
         }
 
-        assertEquals(HttpStatusCode.Created, response.status)
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
     }
 
     @Test
-    fun `POST report-status accepts json`() = testApplication {
+    fun `anonymous tracking endpoint is no longer registered`() = testApplication {
         application { configureTestApplication() }
 
         val response = client.post("/api/v1/report-status") {
@@ -77,6 +77,6 @@ class PublicReportRoutesTest {
             setBody("""{"trackingCode": "1234567890"}""")
         }
 
-        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(HttpStatusCode.NotFound, response.status)
     }
 }

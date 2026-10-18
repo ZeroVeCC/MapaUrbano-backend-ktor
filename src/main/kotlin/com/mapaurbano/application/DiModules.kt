@@ -5,9 +5,12 @@ import com.mapaurbano.assignments.application.CreateTeamUseCase
 import com.mapaurbano.assignments.application.ManageTeamMembersUseCase
 import com.mapaurbano.assignments.application.UnassignReportUseCase
 import com.mapaurbano.assignments.application.UpdateTeamUseCase
+import com.mapaurbano.assignments.application.TeamQueryUseCase
 import com.mapaurbano.assignments.domain.AssignmentRepository
 import com.mapaurbano.assignments.domain.TeamRepository
 import com.mapaurbano.audit.domain.AuditRepository
+import com.mapaurbano.audit.application.ListAuditEventsUseCase
+import com.mapaurbano.audit.application.RecordAuditEventUseCase
 import com.mapaurbano.auth.application.LoginAdminUseCase
 import com.mapaurbano.auth.application.AuthenticateUserUseCase
 import com.mapaurbano.auth.application.LoginUserUseCase
@@ -19,6 +22,7 @@ import com.mapaurbano.categories.application.ListCategoriesUseCase
 import com.mapaurbano.categories.application.ManageCategoryUseCase
 import com.mapaurbano.categories.domain.CategoryRepository
 import com.mapaurbano.infrastructure.database.repositories.AdminSessionRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.AdminReportQueryRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.AdminUserRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.AssignmentRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.AuditRepositoryImpl
@@ -28,7 +32,9 @@ import com.mapaurbano.infrastructure.database.repositories.ReportRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.SessionRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.TeamRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.UserRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.StatisticsRepositoryImpl
 import com.mapaurbano.media.application.GetImageUseCase
+import com.mapaurbano.media.application.GetOwnImageUseCase
 import com.mapaurbano.media.application.ProcessImageUseCase
 import com.mapaurbano.media.domain.ImageRepository
 import com.mapaurbano.notifications.application.EventBus
@@ -36,14 +42,15 @@ import com.mapaurbano.reports.application.ChangeReportPriorityUseCase
 import com.mapaurbano.reports.application.ChangeReportStatusUseCase
 import com.mapaurbano.reports.application.CreateReportUseCase
 import com.mapaurbano.reports.application.DeleteReportUseCase
-import com.mapaurbano.reports.application.GetPublicReportUseCase
-import com.mapaurbano.reports.application.GetReportByTrackingCodeUseCase
-import com.mapaurbano.reports.application.ListPublicReportsUseCase
+import com.mapaurbano.reports.application.AdminReportQueryUseCase
+import com.mapaurbano.reports.domain.AdminReportQueryRepository
 import com.mapaurbano.reports.domain.ReportRepository
 import com.mapaurbano.statistics.application.GetStatisticsUseCase
+import com.mapaurbano.statistics.domain.StatisticsRepository
 import com.mapaurbano.users.application.DeactivateUserUseCase
 import com.mapaurbano.users.application.GetCurrentUserUseCase
 import com.mapaurbano.users.application.ListUserReportsUseCase
+import com.mapaurbano.users.application.GetOwnReportUseCase
 import com.mapaurbano.users.application.RegisterUserUseCase
 import com.mapaurbano.users.domain.SessionRepository
 import com.mapaurbano.users.domain.UserRepository
@@ -56,11 +63,13 @@ val repositoryModule = module {
     single<AdminUserRepository> { AdminUserRepositoryImpl() }
     single<AdminSessionRepository> { AdminSessionRepositoryImpl() }
     single<ReportRepository> { ReportRepositoryImpl() }
+    single<AdminReportQueryRepository> { AdminReportQueryRepositoryImpl() }
     single<CategoryRepository> { CategoryRepositoryImpl() }
     single<TeamRepository> { TeamRepositoryImpl() }
     single<AssignmentRepository> { AssignmentRepositoryImpl() }
     single<AuditRepository> { AuditRepositoryImpl() }
     single<ImageRepository> { ImageRepositoryImpl() }
+    single<StatisticsRepository> { StatisticsRepositoryImpl() }
 }
 
 val applicationModule = module {
@@ -78,15 +87,14 @@ val applicationModule = module {
     singleOf(::GetCurrentUserUseCase)
     singleOf(::DeactivateUserUseCase)
     singleOf(::ListUserReportsUseCase)
+    singleOf(::GetOwnReportUseCase)
 
     // Reports
     singleOf(::CreateReportUseCase)
-    singleOf(::ListPublicReportsUseCase)
-    singleOf(::GetPublicReportUseCase)
-    singleOf(::GetReportByTrackingCodeUseCase)
     singleOf(::ChangeReportStatusUseCase)
     singleOf(::ChangeReportPriorityUseCase)
     singleOf(::DeleteReportUseCase)
+    singleOf(::AdminReportQueryUseCase)
 
     // Assignments
     singleOf(::CreateTeamUseCase)
@@ -94,6 +102,7 @@ val applicationModule = module {
     singleOf(::ManageTeamMembersUseCase)
     singleOf(::AssignReportUseCase)
     singleOf(::UnassignReportUseCase)
+    singleOf(::TeamQueryUseCase)
 
     // Categories
     singleOf(::ListCategoriesUseCase)
@@ -101,10 +110,13 @@ val applicationModule = module {
 
     // Media
     singleOf(::GetImageUseCase)
+    singleOf(::GetOwnImageUseCase)
     singleOf(::ProcessImageUseCase)
 
     // Statistics
     singleOf(::GetStatisticsUseCase)
+    singleOf(::ListAuditEventsUseCase)
+    singleOf(::RecordAuditEventUseCase)
 }
 
 

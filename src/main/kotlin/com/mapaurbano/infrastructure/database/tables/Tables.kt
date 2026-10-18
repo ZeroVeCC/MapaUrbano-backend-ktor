@@ -24,6 +24,14 @@ object AdminUsersTable : UUIDTable("admin_users") {
     val updatedAt = timestamp("updated_at")
 }
 
+object AdminSessionsTable : UUIDTable("admin_sessions") {
+    val adminUserId = reference("admin_user_id", AdminUsersTable)
+    val csrfToken = varchar("csrf_token", 64).uniqueIndex()
+    val expiresAt = timestamp("expires_at")
+    val revokedAt = timestamp("revoked_at").nullable()
+    val createdAt = timestamp("created_at")
+}
+
 object UsersTable : UUIDTable("users") {
     val email = varchar("email", 254).nullable()
     val dni = varchar("dni", 8).nullable()
@@ -125,8 +133,7 @@ object AuditEventsTable : UUIDTable("audit_events") {
     val action = varchar("action", 120)
     val entityType = varchar("entity_type", 80)
     val entityId = uuid("entity_id").nullable()
-    // jsonb support requires kotlinx.serialization configuration or a custom column type. Using text as workaround.
-    val metadata = text("metadata").default("{}") 
+    val metadata = jsonbText("metadata").default("{}")
     val sourceIp = varchar("source_ip", 45).nullable() // inet stored as string
     val occurredAt = timestamp("occurred_at")
 }

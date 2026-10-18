@@ -97,3 +97,13 @@ data class AssignmentRequest(
     val responsibleAdminUserId: String? = null,
     val version: Long,
 )
+
+@Serializable
+data class ReportMutationResponse(
+    val id: String,
+    val status: String,
+    val priority: String,
+    val dueAt: String? = null,
+    val version: Long,
+    val updatedAt: String,
+)

@@ -1,12 +1,15 @@
 ﻿package com.mapaurbano.reports.api
 
-import com.mapaurbano.application.AdminSession
+import com.mapaurbano.application.AdminPrincipal
+import com.mapaurbano.application.hasValidAdminCsrf
+import com.mapaurbano.reports.application.AdminReportQueryUseCase
 import com.mapaurbano.reports.application.ChangeReportPriorityUseCase
 import com.mapaurbano.reports.application.ChangeReportStatusUseCase
 import com.mapaurbano.reports.application.DeleteReportUseCase
 import com.mapaurbano.reports.dto.UpdatePriorityRequest
 import com.mapaurbano.reports.dto.UpdateStatusRequest
-import com.mapaurbano.shared.api.respondEndpointNotImplemented
+import com.mapaurbano.reports.dto.ReportMutationResponse
+import com.mapaurbano.shared.api.respondApiError
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
@@ -23,58 +26,91 @@ fun Route.adminReportRoutes() {
     val changeReportStatusUseCase by inject<ChangeReportStatusUseCase>()
     val changeReportPriorityUseCase by inject<ChangeReportPriorityUseCase>()
     val deleteReportUseCase by inject<DeleteReportUseCase>()
+    val queryUseCase by inject<AdminReportQueryUseCase>()
 
     route("/reports") {
         get {
-            call.respondEndpointNotImplemented("listAdminReports")
+            val response = queryUseCase.list(
+                status = call.request.queryParameters["status"],
+                category = call.request.queryParameters["categorySlug"],
+                priority = call.request.queryParameters["priority"],
+                teamId = call.request.queryParameters["teamId"],
+                responsibleAdminUserId = call.request.queryParameters["responsibleAdminUserId"],
+                search = call.request.queryParameters["search"],
+                cursor = call.request.queryParameters["cursor"],
+                limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 50,
+            )
+            call.respond(HttpStatusCode.OK, response)
         }
 
         get("/{id}") {
-            call.respondEndpointNotImplemented("getAdminReport")
+            val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
+            call.respond(HttpStatusCode.OK, queryUseCase.detail(id))
         }
 
         patch("/{id}/status") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
             val request = call.receive<UpdateStatusRequest>()
-            val session = call.principal<AdminSession>()
+            val session = call.principal<AdminPrincipal>()
                 ?: return@patch call.respond(HttpStatusCode.Unauthorized)
+            if (!call.hasValidAdminCsrf(session)) {
+                return@patch call.respondApiError(HttpStatusCode.Forbidden, "CSRF_INVALID", "El token CSRF es inválido.")
+            }
 
             val updatedReport = changeReportStatusUseCase.execute(
                 reportId = id,
                 newStatusString = request.status,
                 version = request.version,
                 note = request.note,
-                adminUserId = session.userId
+                adminUserId = session.adminUserId
             )
-            call.respond(HttpStatusCode.OK, updatedReport)
+            call.respond(HttpStatusCode.OK, updatedReport.toMutationResponse())
         }
 
         patch("/{id}/priority") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
             val request = call.receive<UpdatePriorityRequest>()
-            val session = call.principal<AdminSession>()
+            val session = call.principal<AdminPrincipal>()
                 ?: return@patch call.respond(HttpStatusCode.Unauthorized)
+            if (!call.hasValidAdminCsrf(session)) {
+                return@patch call.respondApiError(HttpStatusCode.Forbidden, "CSRF_INVALID", "El token CSRF es inválido.")
+            }
 
-            val dueAt = request.dueAt?.let { Instant.parse(it) }
+            val dueAt = request.dueAt?.let {
+                runCatching { Instant.parse(it) }
+                    .getOrElse { throw com.mapaurbano.shared.domain.ValidationException("dueAt debe ser una fecha ISO-8601 válida") }
+            }
 
-            changeReportPriorityUseCase.execute(
+            val updatedReport = changeReportPriorityUseCase.execute(
                 reportId = id,
                 newPriorityString = request.priority,
                 dueAt = dueAt,
                 version = request.version,
-                adminUserId = session.userId
+                adminUserId = session.adminUserId
             )
-            call.respond(HttpStatusCode.NoContent)
+            call.respond(HttpStatusCode.OK, updatedReport.toMutationResponse())
         }
 
         delete("/{id}") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
-            val session = call.principal<AdminSession>()
+            val session = call.principal<AdminPrincipal>()
                 ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+            if (!call.hasValidAdminCsrf(session)) {
+                return@delete call.respondApiError(HttpStatusCode.Forbidden, "CSRF_INVALID", "El token CSRF es inválido.")
+            }
 
-            deleteReportUseCase.execute(id, session.userId)
+            deleteReportUseCase.execute(id, session.adminUserId)
             call.respond(HttpStatusCode.NoContent)
         }
     }
 }
+
+private fun com.mapaurbano.reports.domain.Report.toMutationResponse() = ReportMutationResponse(
+    id = id,
+    status = status.name,
+    priority = priority.name,
+    dueAt = dueAt?.toString(),
+    version = version,
+    updatedAt = updatedAt.toString(),
+)
 

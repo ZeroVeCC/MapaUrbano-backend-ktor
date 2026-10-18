@@ -28,4 +28,12 @@ data class AdminLoginRequest(
 data class AdminLoginResponse(
     val adminUserId: String,
     val username: String,
+    val csrfToken: String,
+)
+
+@Serializable
+data class AdminSessionResponse(
+    val adminUserId: String,
+    val username: String,
+    val csrfToken: String,
 )

@@ -6,8 +6,10 @@ import com.mapaurbano.categories.dto.CategoryResponse
 class ListCategoriesUseCase(
     private val categoryRepository: CategoryRepository
 ) {
-    suspend fun execute(): List<CategoryResponse> {
-        return categoryRepository.findAll().map { cat ->
+    suspend fun execute(includeInactive: Boolean = false): List<CategoryResponse> {
+        return categoryRepository.findAll()
+            .filter { includeInactive || it.isActive }
+            .map { cat ->
             CategoryResponse(
                 id = cat.id,
                 slug = cat.slug,

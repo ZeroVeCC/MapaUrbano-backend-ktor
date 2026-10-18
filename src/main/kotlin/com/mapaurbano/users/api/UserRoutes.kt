@@ -1,10 +1,13 @@
 package com.mapaurbano.users.api
 
 import com.mapaurbano.auth.dto.LoginRequest
-import com.mapaurbano.shared.api.respondEndpointNotImplemented
 import com.mapaurbano.users.application.DeactivateUserUseCase
 import com.mapaurbano.users.application.GetCurrentUserUseCase
 import com.mapaurbano.users.application.ListUserReportsUseCase
+import com.mapaurbano.users.application.GetOwnReportUseCase
+import com.mapaurbano.media.application.GetOwnImageUseCase
+import io.ktor.http.ContentType
+import io.ktor.server.response.respondBytes
 import com.mapaurbano.users.application.RegisterUserUseCase
 import com.mapaurbano.auth.application.LoginUserUseCase
 import com.mapaurbano.auth.application.LogoutUserUseCase
@@ -21,6 +24,8 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.koin.ktor.ext.inject
+import io.ktor.server.plugins.ratelimit.RateLimitName
+import io.ktor.server.plugins.ratelimit.rateLimit
 
 fun Route.userRoutes() {
     val registerUserUseCase by inject<RegisterUserUseCase>()
@@ -29,18 +34,22 @@ fun Route.userRoutes() {
     val getCurrentUserUseCase by inject<GetCurrentUserUseCase>()
     val deactivateUserUseCase by inject<DeactivateUserUseCase>()
     val listUserReportsUseCase by inject<ListUserReportsUseCase>()
+    val getOwnReportUseCase by inject<GetOwnReportUseCase>()
+    val getOwnImageUseCase by inject<GetOwnImageUseCase>()
 
     route("/users") {
-        post("/register") {
-            val request = call.receive<RegisterRequest>()
-            val response = registerUserUseCase.execute(request)
-            call.respond(HttpStatusCode.Created, response)
-        }
+        rateLimit(RateLimitName("auth")) {
+            post("/register") {
+                val request = call.receive<RegisterRequest>()
+                val response = registerUserUseCase.execute(request)
+                call.respond(HttpStatusCode.Created, response)
+            }
 
-        post("/login") {
-            val request = call.receive<LoginRequest>()
-            val response = loginUserUseCase.execute(request)
-            call.respond(HttpStatusCode.OK, response)
+            post("/login") {
+                val request = call.receive<LoginRequest>()
+                val response = loginUserUseCase.execute(request)
+                call.respond(HttpStatusCode.OK, response)
+            }
         }
 
         authenticate("user-bearer") {
@@ -78,7 +87,19 @@ fun Route.userRoutes() {
             }
 
             get("/me/reports/{id}") {
-                call.respondEndpointNotImplemented("getCurrentUserReport")
+                val userId = call.principal<UserPrincipal>()?.userId
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
+                call.respond(HttpStatusCode.OK, getOwnReportUseCase.execute(userId, id))
+            }
+
+            get("/me/reports/{id}/image") {
+                val userId = call.principal<UserPrincipal>()?.userId
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
+                val image = getOwnImageUseCase.execute(userId, id)
+                val contentType = runCatching { ContentType.parse(image.contentType) }.getOrDefault(ContentType.Image.JPEG)
+                call.respondBytes(image.data, contentType, HttpStatusCode.OK)
             }
         }
     }

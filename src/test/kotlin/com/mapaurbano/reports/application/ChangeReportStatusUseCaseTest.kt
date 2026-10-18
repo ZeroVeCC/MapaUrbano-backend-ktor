@@ -19,8 +19,16 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import kotlin.test.assertEquals
+import com.mapaurbano.audit.domain.AuditEvent
+import com.mapaurbano.audit.domain.AuditRepository
 
 class ChangeReportStatusUseCaseTest {
+    private class FakeAuditRepository : AuditRepository {
+        val events = mutableListOf<AuditEvent>()
+        override suspend fun create(event: AuditEvent) = event.also(events::add)
+        override suspend fun findAll(cursor: String?, limit: Int) = events.take(limit)
+        override suspend fun count() = events.size.toLong()
+    }
     
     class FakeReportRepository(private var report: Report) : ReportRepository {
         override suspend fun findById(id: String): Report? = report
@@ -35,7 +43,7 @@ class ChangeReportStatusUseCaseTest {
             }
             return false
         }
-        override suspend fun updatePriority(id: String, priority: ReportPriority, dueAt: Instant?, version: Long): Boolean = true
+        override suspend fun updatePriority(id: String, oldPriority: ReportPriority, priority: ReportPriority, oldDueAt: Instant?, dueAt: Instant?, version: Long, adminUserId: String): Boolean = true
         override suspend fun softDelete(id: String): Boolean = true
     }
 
@@ -49,7 +57,7 @@ class ChangeReportStatusUseCaseTest {
         )
         val reportRepo = FakeReportRepository(report)
 
-        val useCase = ChangeReportStatusUseCase(reportRepo, EventBus())
+        val useCase = ChangeReportStatusUseCase(reportRepo, FakeAuditRepository(), EventBus())
 
         assertThrows<ConflictException> {
             useCase.execute("r-1", "IN_PROGRESS", 1L, "Nota", "admin-1")
@@ -67,11 +75,13 @@ class ChangeReportStatusUseCaseTest {
 
         val bus = EventBus()
         val event = async(start = CoroutineStart.UNDISPATCHED) { withTimeout(2000) { bus.subscribeAdmin().first() } }
-        val useCase = ChangeReportStatusUseCase(reportRepo, bus)
+        val audit = FakeAuditRepository()
+        val useCase = ChangeReportStatusUseCase(reportRepo, audit, bus)
 
         val result = useCase.execute("r-1", "IN_PROGRESS", 1L, "Nota", "admin-1")
         assertEquals(ReportStatus.IN_PROGRESS, result.status)
         assertEquals(2L, result.version)
+        assertEquals("status_changed", audit.events.single().action)
         assertEquals("report.updated", event.await().type)
     }
 }

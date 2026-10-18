@@ -30,5 +30,11 @@ fun Route.publicImageRoutes() {
 }
 
 fun Route.adminImageRoutes() {
-    // Additional admin image management endpoints if needed
+    val getImageUseCase by inject<GetImageUseCase>()
+    get("/reports/{id}/image") {
+        val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
+        val image = getImageUseCase.execute(id)
+        val contentType = runCatching { ContentType.parse(image.contentType) }.getOrDefault(ContentType.Image.JPEG)
+        call.respondBytes(image.data, contentType, HttpStatusCode.OK)
+    }
 }

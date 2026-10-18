@@ -4,6 +4,7 @@ import com.mapaurbano.infrastructure.database.tables.GeoPoint
 import com.mapaurbano.infrastructure.database.tables.GeographyPointColumnType
 import com.mapaurbano.infrastructure.database.tables.ReportsTable
 import com.mapaurbano.infrastructure.database.tables.ReportStatusHistoryTable
+import com.mapaurbano.infrastructure.database.tables.ReportPriorityHistoryTable
 import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportRepository
@@ -128,7 +129,7 @@ class ReportRepositoryImpl : ReportRepository {
         val adminUuid = try { java.util.UUID.fromString(adminUserId) } catch (_: Exception) { return@newSuspendedTransaction false }
         
         val updatedRows = ReportsTable.update({
-            (ReportsTable.id eq uuid) and (ReportsTable.version eq version)
+            (ReportsTable.id eq uuid) and (ReportsTable.version eq version) and ReportsTable.deletedAt.isNull()
         }) {
             it[ReportsTable.status] = newStatus
             it[ReportsTable.version] = version + 1
@@ -149,22 +150,34 @@ class ReportRepositoryImpl : ReportRepository {
         updatedRows > 0
     }
 
-    override suspend fun updatePriority(id: String, priority: ReportPriority, dueAt: Instant?, version: Long): Boolean = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun updatePriority(id: String, oldPriority: ReportPriority, priority: ReportPriority, oldDueAt: Instant?, dueAt: Instant?, version: Long, adminUserId: String): Boolean = newSuspendedTransaction(Dispatchers.IO) {
         val uuid = try { UUID.fromString(id) } catch (_: Exception) { return@newSuspendedTransaction false }
+        val adminUuid = try { UUID.fromString(adminUserId) } catch (_: Exception) { return@newSuspendedTransaction false }
         val updatedRows = ReportsTable.update({
-            (ReportsTable.id eq uuid) and (ReportsTable.version eq version)
+            (ReportsTable.id eq uuid) and (ReportsTable.version eq version) and ReportsTable.deletedAt.isNull()
         }) {
             it[ReportsTable.priority] = priority
             it[ReportsTable.dueAt] = dueAt
             it[ReportsTable.version] = version + 1
             it[ReportsTable.updatedAt] = Instant.now()
         }
+        if (updatedRows > 0) {
+            ReportPriorityHistoryTable.insert {
+                it[reportId] = uuid
+                it[changedBy] = adminUuid
+                it[fromPriority] = oldPriority
+                it[toPriority] = priority
+                it[fromDueAt] = oldDueAt
+                it[toDueAt] = dueAt
+                it[changedAt] = Instant.now()
+            }
+        }
         updatedRows > 0
     }
 
     override suspend fun softDelete(id: String): Boolean = newSuspendedTransaction(Dispatchers.IO) {
         val uuid = try { UUID.fromString(id) } catch (_: Exception) { return@newSuspendedTransaction false }
-        val updatedRows = ReportsTable.update({ ReportsTable.id eq uuid }) {
+        val updatedRows = ReportsTable.update({ (ReportsTable.id eq uuid) and ReportsTable.deletedAt.isNull() }) {
             it[ReportsTable.deletedAt] = Instant.now()
         }
         updatedRows > 0

@@ -7,9 +7,14 @@ import com.mapaurbano.auth.application.AuthenticateUserUseCase
 import com.mapaurbano.shared.api.respondApiError
 import io.ktor.http.HttpStatusCode
 import org.koin.ktor.ext.inject
+import com.mapaurbano.auth.domain.AdminSessionRepository
+import java.security.MessageDigest
+import io.ktor.server.request.header
+import kotlinx.serialization.Serializable
 
 fun Application.configureSecurity() {
     val authenticateUser by inject<AuthenticateUserUseCase>()
+    val adminSessionRepository by inject<AdminSessionRepository>()
     install(Authentication) {
         bearer("user-bearer") {
             realm = "Access to user API"
@@ -18,10 +23,15 @@ fun Application.configureSecurity() {
             }
         }
         
-        session<AdminSession>("admin-session") {
-            validate { session ->
-                // TODO: Validate session against repository
-                session
+        session<AdminSessionCookie>("admin-session") {
+            validate { cookie ->
+                adminSessionRepository.findById(cookie.id)?.let { session ->
+                    AdminPrincipal(
+                        sessionId = session.id,
+                        adminUserId = session.adminUserId,
+                        csrfToken = session.csrfToken,
+                    )
+                }
             }
             challenge {
                 call.respondApiError(
@@ -34,4 +44,22 @@ fun Application.configureSecurity() {
     }
 }
 
-data class AdminSession(val id: String, val userId: String) : Principal
+const val ADMIN_SESSION_COOKIE = "mapa_urbano_admin"
+const val ADMIN_CSRF_HEADER = "X-CSRF-Token"
+
+@Serializable
+data class AdminSessionCookie(val id: String)
+
+data class AdminPrincipal(
+    val sessionId: String,
+    val adminUserId: String,
+    val csrfToken: String,
+)
+
+fun io.ktor.server.application.ApplicationCall.hasValidAdminCsrf(principal: AdminPrincipal): Boolean {
+    val supplied = request.header(ADMIN_CSRF_HEADER) ?: return false
+    return MessageDigest.isEqual(
+        supplied.toByteArray(Charsets.UTF_8),
+        principal.csrfToken.toByteArray(Charsets.UTF_8),
+    )
+}

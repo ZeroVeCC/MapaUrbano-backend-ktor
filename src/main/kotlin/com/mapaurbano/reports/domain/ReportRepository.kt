@@ -7,7 +7,7 @@ interface ReportRepository {
     suspend fun findByBbox(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double, status: ReportStatus?, categoryId: String?, limit: Int): List<Report>
     suspend fun create(report: Report): Report
     suspend fun updateStatus(id: String, oldStatus: ReportStatus, newStatus: ReportStatus, version: Long, adminUserId: String, note: String?): Boolean
-    suspend fun updatePriority(id: String, priority: ReportPriority, dueAt: java.time.Instant?, version: Long): Boolean
+    suspend fun updatePriority(id: String, oldPriority: ReportPriority, priority: ReportPriority, oldDueAt: java.time.Instant?, dueAt: java.time.Instant?, version: Long, adminUserId: String): Boolean
     suspend fun softDelete(id: String): Boolean
 }
 

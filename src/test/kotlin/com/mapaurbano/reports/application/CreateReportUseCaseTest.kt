@@ -8,6 +8,7 @@ import com.mapaurbano.reports.domain.ReportRepository
 import com.mapaurbano.reports.domain.ReportStatus
 import com.mapaurbano.reports.domain.SubmissionMode
 import com.mapaurbano.shared.domain.ValidationException
+import com.mapaurbano.notifications.application.EventBus
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -30,7 +31,7 @@ class CreateReportUseCaseTest {
             return report
         }
         override suspend fun updateStatus(id: String, oldStatus: ReportStatus, newStatus: ReportStatus, version: Long, adminUserId: String, note: String?): Boolean = true
-        override suspend fun updatePriority(id: String, priority: ReportPriority, dueAt: Instant?, version: Long): Boolean = true
+        override suspend fun updatePriority(id: String, oldPriority: ReportPriority, priority: ReportPriority, oldDueAt: Instant?, dueAt: Instant?, version: Long, adminUserId: String): Boolean = true
         override suspend fun softDelete(id: String): Boolean = true
     }
 
@@ -44,7 +45,7 @@ class CreateReportUseCaseTest {
 
     private val reportRepository = FakeReportRepository()
     private val categoryRepository = FakeCategoryRepository()
-    private val useCase = CreateReportUseCase(reportRepository, categoryRepository)
+    private val useCase = CreateReportUseCase(reportRepository, categoryRepository, EventBus())
 
     @Test
     fun `modo cuenta sin sesion deberia fallar`(): Unit = runBlocking {
@@ -63,18 +64,18 @@ class CreateReportUseCaseTest {
     }
 
     @Test
-    fun `modo anonimo genera tracking code`(): Unit = runBlocking {
-        val response = useCase.execute(
-            title = "Bache",
-            description = "Grande",
-            categorySlug = "bach",
-            latitude = -34.0,
-            longitude = -58.0,
-            submissionMode = SubmissionMode.ANONYMOUS,
-            userId = null
-        )
-        assertNotNull(response.trackingCode)
-        val saved = reportRepository.reports.first()
-        assertNotNull(saved.trackingCodeHash)
+    fun `modo anonimo se rechaza porque los reportes requieren cuenta`(): Unit = runBlocking {
+        assertThrows<ValidationException> {
+            useCase.execute(
+                title = "Bache",
+                description = "Grande",
+                categorySlug = "bach",
+                latitude = -34.0,
+                longitude = -58.0,
+                submissionMode = SubmissionMode.ANONYMOUS,
+                userId = null
+            )
+        }
+        assertTrue(reportRepository.reports.isEmpty())
     }
 }

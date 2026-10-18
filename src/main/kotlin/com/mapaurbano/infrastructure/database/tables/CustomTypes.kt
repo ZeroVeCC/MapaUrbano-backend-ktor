@@ -149,6 +149,39 @@ class GeographyPointColumnType : ColumnType<GeoPoint>() {
 fun Table.geoPoint(name: String): Column<GeoPoint> =
     registerColumn(name, GeographyPointColumnType())
 
+/** Maps PostgreSQL jsonb without making the domain depend on a JSON library. */
+class JsonbColumnType : ColumnType<String>() {
+    override fun sqlType(): String = "jsonb"
+
+    override fun valueFromDB(value: Any): String = when (value) {
+        is PGobject -> value.value ?: "{}"
+        is String -> value
+        else -> value.toString()
+    }
+
+    override fun notNullValueToDB(value: String): Any = PGobject().apply {
+        type = "jsonb"
+        this.value = value
+    }
+
+    override fun setParameter(stmt: PreparedStatementApi, index: Int, value: Any?) {
+        if (value == null) {
+            super.setParameter(stmt, index, null)
+            return
+        }
+        stmt[index] = when (value) {
+            is PGobject -> value
+            is String -> notNullValueToDB(value)
+            else -> error("Unsupported jsonb parameter: ${value::class.qualifiedName}")
+        }
+    }
+
+    override fun nonNullValueToString(value: String): String =
+        "'${value.replace("'", "''")}'::jsonb"
+}
+
+fun Table.jsonbText(name: String): Column<String> = registerColumn(name, JsonbColumnType())
+
 // ─── PgEnum ──────────────────────────────────────────────────────────────
 
 /**

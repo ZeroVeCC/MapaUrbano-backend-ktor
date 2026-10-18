@@ -791,3 +791,34 @@ Esta constancia debe leerse junto con:
 - `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md` para el diagnóstico de visibilidad y las tareas separadas por equipo;
 - `docs/REESCANEO_WEB_2026-10-18.md` para el último estado publicado del panel web y su plan priorizado;
 - la rama `develop` del monorepo original para requisitos y alcance.
+
+## 17. Actualización de cierre backend — 18 de octubre de 2026
+
+La etapa crítica que en esta constancia figuraba pendiente quedó implementada en
+el backend:
+
+- cuenta obligatoria para crear reportes;
+- eliminación de consultas globales y seguimiento anónimo para ciudadanos;
+- listado, detalle e imagen propios con verificación de pertenencia;
+- sesión administrativa persistida por cookie, CSRF y CORS con credenciales;
+- consultas y mutaciones administrativas, equipos, responsables, estadísticas,
+  auditoría y WebSocket administrativo;
+- control optimista también para asignaciones;
+- readiness real, validación binaria de imágenes y contrato OpenAPI actualizado.
+- retiro de los casos de uso residuales del listado público y seguimiento anónimo;
+  los registros anónimos históricos continúan legibles solo por administración.
+
+Durante la integración HTTP con PostgreSQL se detectó y corrigió un defecto no
+registrado antes: Exposed trataba `audit_events.metadata` como texto aunque la
+columna es `jsonb`. Esto causaba HTTP 500 después de cambiar el estado. El nuevo
+tipo `JsonbColumnType` envía un `PGobject` correcto y la prueba end-to-end confirma
+login, cookie, CSRF, consulta, mutación auditada y logout.
+
+Se ejecutaron correctamente `test` e `integrationTest` con Docker/PostGIS. La
+integración ahora comprueba también `admin_sessions`, respuestas ciudadanas y
+administrativas con coordenadas reales y estadísticas.
+
+El estado y las instrucciones entregables para el equipo web están en
+`docs/CIERRE_BACKEND_Y_PLAN_WEB_2026-10-18.md`. Las secciones anteriores se
+conservan como evidencia histórica; cuando contradigan esta actualización, rige
+esta sección y el OpenAPI versionado.

@@ -1,6 +1,13 @@
 package com.mapaurbano.database
 
 import com.mapaurbano.infrastructure.database.repositories.ReportRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.AdminReportQueryRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.CategoryRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.ImageRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.StatisticsRepositoryImpl
+import com.mapaurbano.reports.domain.AdminReportFilter
+import com.mapaurbano.users.application.GetOwnReportUseCase
+import com.mapaurbano.users.application.ListUserReportsUseCase
 import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportStatus
@@ -10,6 +17,8 @@ import java.sql.SQLException
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.FlywayException
 import org.jetbrains.exposed.sql.Database
@@ -26,6 +35,29 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import at.favre.lib.crypto.bcrypt.BCrypt
+import com.mapaurbano.application.applicationModule
+import com.mapaurbano.application.configurePlugins
+import com.mapaurbano.application.configureRateLimiting
+import com.mapaurbano.application.configureRouting
+import com.mapaurbano.application.configureSecurity
+import com.mapaurbano.application.repositoryModule
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.patch
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.server.application.install
+import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.koin.ktor.plugin.Koin
 
 @Tag("database")
 @Testcontainers
@@ -44,7 +76,7 @@ class DatabaseMigrationsTest {
         @JvmStatic
         fun migrateEmptyDatabase() {
             // The PostGIS image preinstalls extensions. An extension-only schema must be accepted.
-            assertEquals(3, flyway().migrate().migrationsExecuted)
+            assertEquals(4, flyway().migrate().migrationsExecuted)
             flyway().validate()
         }
     }
@@ -91,7 +123,7 @@ class DatabaseMigrationsTest {
                 it.executeUpdate()
             }
         }
-        assertEquals(1, flyway(url).migrate().migrationsExecuted)
+        assertEquals(2, flyway(url).migrate().migrationsExecuted)
         DriverManager.getConnection(url, postgres.username, postgres.password).use { db ->
             db.createStatement().use { statement ->
                 statement.executeQuery("SELECT email, dni, password_hash FROM users").use {
@@ -110,7 +142,7 @@ class DatabaseMigrationsTest {
     @Test
     fun `schema contains all required tables and spatial index`() {
         val tables = setOf(
-            "categories", "admin_users", "users", "user_sessions", "teams", "team_members",
+            "categories", "admin_users", "admin_sessions", "users", "user_sessions", "teams", "team_members",
             "reports", "report_images", "report_status_history", "report_priority_history",
             "report_assignments", "audit_events",
         )
@@ -128,7 +160,7 @@ class DatabaseMigrationsTest {
             assertEquals(0, flyway().migrate().migrationsExecuted)
             flyway().validate()
             assertEquals(id.toString(), scalar("SELECT id::text FROM reports WHERE id = ?", id))
-            assertEquals("3", scalar("SELECT count(*) FROM flyway_schema_history WHERE success"))
+            assertEquals("4", scalar("SELECT count(*) FROM flyway_schema_history WHERE success"))
             assertFailsWith<FlywayException> { flyway().clean() }
         } finally {
             execute("DELETE FROM reports WHERE id = ?", id)
@@ -222,6 +254,104 @@ class DatabaseMigrationsTest {
     }
 
     @Test
+    fun `admin sessions persist CSRF expiration and revocation constraints`() {
+        val admin = admin()
+        val session = UUID.randomUUID()
+        execute(
+            "INSERT INTO admin_sessions (id, admin_user_id, csrf_token, expires_at) VALUES (?, ?, ?, now() + interval '8 hours')",
+            session, admin, UUID.randomUUID().toString().replace("-", ""),
+        )
+        assertEquals(admin.toString(), scalar("SELECT admin_user_id::text FROM admin_sessions WHERE id = ?", session))
+        rejects("23505") {
+            execute(
+                "INSERT INTO admin_sessions (id, admin_user_id, csrf_token, expires_at) SELECT ?, ?, csrf_token, now() + interval '8 hours' FROM admin_sessions WHERE id = ?",
+                UUID.randomUUID(), admin, session,
+            )
+        }
+        rejects("23514") { execute("UPDATE admin_sessions SET expires_at = created_at WHERE id = ?", session) }
+        rejects("23514") { execute("UPDATE admin_sessions SET revoked_at = created_at - interval '1 second' WHERE id = ?", session) }
+    }
+
+    @Test
+    fun `admin login cookie CSRF report query and logout work end to end`() = testApplication {
+        val adminId = UUID.randomUUID()
+        val reportId = report()
+        val teamId = UUID.randomUUID()
+        val password = "admin-password-2026"
+        execute(
+            "INSERT INTO admin_users (id, username, password_hash) VALUES (?, 'integration-admin', ?)",
+            adminId, BCrypt.withDefaults().hashToString(12, password.toCharArray()),
+        )
+        execute("INSERT INTO teams (id, name) VALUES (?, 'Integración vial')", teamId)
+        connection.commit()
+
+        application {
+            install(Koin) { modules(repositoryModule, applicationModule) }
+            configurePlugins()
+            configureRateLimiting()
+            configureSecurity()
+            configureRouting()
+        }
+        val browser = createClient { install(HttpCookies) }
+        try {
+            val login = browser.post("/api/v1/admin/auth/login") {
+                contentType(ContentType.Application.Json)
+                setBody("""{"username":"integration-admin","password":"$password"}""")
+            }
+            assertEquals(HttpStatusCode.OK, login.status)
+            val csrf = Json.parseToJsonElement(login.bodyAsText()).jsonObject.getValue("csrfToken").jsonPrimitive.content
+            assertTrue(csrf.isNotBlank())
+            assertEquals(HttpStatusCode.OK, browser.get("/api/v1/admin/auth/me").status)
+
+            val reports = browser.get("/api/v1/admin/reports")
+            assertEquals(HttpStatusCode.OK, reports.status)
+            assertTrue(reports.bodyAsText().contains(reportId.toString()))
+            assertEquals(HttpStatusCode.OK, browser.get("/api/v1/admin/reports/$reportId").status)
+
+            val mutationBody = """{"status":"IN_PROGRESS","version":0,"note":"Integración"}"""
+            assertEquals(HttpStatusCode.Forbidden, browser.patch("/api/v1/admin/reports/$reportId/status") {
+                contentType(ContentType.Application.Json)
+                setBody(mutationBody)
+            }.status)
+            val changed = browser.patch("/api/v1/admin/reports/$reportId/status") {
+                contentType(ContentType.Application.Json)
+                header("X-CSRF-Token", csrf)
+                setBody(mutationBody)
+            }
+            assertEquals(HttpStatusCode.OK, changed.status)
+            assertTrue(changed.bodyAsText().contains("IN_PROGRESS"))
+
+            val assignmentBody = """{"teamId":"$teamId","version":1}"""
+            assertEquals(HttpStatusCode.NoContent, browser.put("/api/v1/admin/reports/$reportId/assignment") {
+                contentType(ContentType.Application.Json)
+                header("X-CSRF-Token", csrf)
+                setBody(assignmentBody)
+            }.status)
+            assertTrue(browser.get("/api/v1/admin/reports/$reportId").bodyAsText().contains("Integración vial"))
+            assertEquals(HttpStatusCode.Conflict, browser.put("/api/v1/admin/reports/$reportId/assignment") {
+                contentType(ContentType.Application.Json)
+                header("X-CSRF-Token", csrf)
+                setBody(assignmentBody)
+            }.status)
+
+            assertEquals(HttpStatusCode.NoContent, browser.post("/api/v1/admin/auth/logout") {
+                header("X-CSRF-Token", csrf)
+            }.status)
+            assertEquals(HttpStatusCode.Unauthorized, browser.get("/api/v1/admin/auth/me").status)
+        } finally {
+            connection.rollback()
+            execute("DELETE FROM audit_events WHERE actor_admin_user_id = ?", adminId)
+            execute("DELETE FROM report_assignments WHERE report_id = ?", reportId)
+            execute("DELETE FROM report_status_history WHERE report_id = ?", reportId)
+            execute("DELETE FROM admin_sessions WHERE admin_user_id = ?", adminId)
+            execute("DELETE FROM reports WHERE id = ?", reportId)
+            execute("DELETE FROM teams WHERE id = ?", teamId)
+            execute("DELETE FROM admin_users WHERE id = ?", adminId)
+            connection.commit()
+        }
+    }
+
+    @Test
     fun `reassignment preserves history and permits only one active assignment`() {
         val id = report()
         val admin = admin()
@@ -278,7 +408,7 @@ class DatabaseMigrationsTest {
     @Test
     fun `failed migration rolls back without leaving partial tables`() {
         val url = newDatabase("rollback_test")
-        assertEquals(3, flyway(url).migrate().migrationsExecuted)
+        assertEquals(4, flyway(url).migrate().migrationsExecuted)
         val failing = Flyway.configure().configuration(flyway(url).configuration)
             .locations("classpath:db/migration", "classpath:db/failing").load()
         assertFailsWith<FlywayException> { failing.migrate() }
@@ -408,9 +538,25 @@ class DatabaseMigrationsTest {
             )
             assertTrue(worldList.any { it.id == report.id && it.latitude == report.latitude && it.longitude == report.longitude })
 
+            val adminQueries = AdminReportQueryRepositoryImpl()
+            val adminDetail = assertNotNull(adminQueries.findDetail(report.id))
+            assertEquals(report.latitude, adminDetail.latitude, 0.000001)
+            assertEquals(report.longitude, adminDetail.longitude, 0.000001)
+            val adminList = adminQueries.list(AdminReportFilter(limit = 50))
+            assertTrue(adminList.items.any { it.id == report.id && it.latitude == report.latitude && it.longitude == report.longitude })
+            assertTrue(StatisticsRepositoryImpl().get().totalReports >= 1)
+
             if (report.userId != null) {
                 val byUser = restartedRepository.findByUserId(report.userId, cursor = null, limit = 20)
                 assertTrue(byUser.any { it.id == report.id && it.latitude == report.latitude && it.longitude == report.longitude })
+                val ownList = ListUserReportsUseCase(
+                    restartedRepository, CategoryRepositoryImpl(), ImageRepositoryImpl(),
+                ).execute(report.userId, cursor = null)
+                assertTrue(ownList.items.any { it.id == report.id && it.latitude == report.latitude && it.longitude == report.longitude })
+                val ownDetail = GetOwnReportUseCase(restartedRepository, adminQueries).execute(report.userId, report.id)
+                val json = Json.encodeToString(ownDetail)
+                assertTrue(json.contains("\"latitude\":${report.latitude}"))
+                assertTrue(json.contains("\"longitude\":${report.longitude}"))
             } else {
                 val byTrackingCode = assertNotNull(restartedRepository.findByTrackingCodeHash(report.trackingCodeHash!!))
                 assertEquals(report.latitude, byTrackingCode.latitude, 0.000001)

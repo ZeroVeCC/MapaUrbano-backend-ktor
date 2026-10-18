@@ -1,26 +1,17 @@
 openapi: 3.0.3
 info:
   title: Mapa Urbano API
-  version: 1.2.0
+  version: 2.0.0
   description: |-
     Contrato HTTP y WebSocket del backend Ktor de Mapa Urbano.
 
     La autenticación ciudadana vigente usa **DNI + contraseña**. El login devuelve
     un token opaco que debe enviarse como `Authorization: Bearer <token>`.
 
-    Cada operación incluye `x-implementation-status`:
-
-    - `implemented`: disponible en el código actual.
-    - `partial`: disponible, con una limitación indicada en la descripción.
-    - `stub`: registrada, pero responde HTTP 501.
-    - `blocked`: el código existe, pero la autenticación administrativa actual impide usarlo.
-    - `placeholder`: responde, aunque todavía no calcula datos reales.
-
-    La API administrativa está documentada para mostrar el contrato completo al
-    equipo, pero actualmente está bloqueada: `/api/v1/admin/auth/login` quedó dentro
-    del grupo que exige una sesión previa y Ktor Sessions todavía no tiene un
-    transporte de cookie instalado. Swagger UI sirve para explorar el contrato; no
-    convierte esos endpoints bloqueados en funcionales.
+    Todos los endpoints documentados están implementados. Los vecinos solo acceden
+    a sus propios reportes. La API administrativa usa una cookie HttpOnly persistida;
+    login y `/me` entregan `csrfToken`, que debe enviarse como `X-CSRF-Token` en
+    toda operación administrativa que modifique datos.
 
     Los WebSockets aparecen como handshakes HTTP 101. Swagger UI no abre conexiones
     WebSocket; los clientes deben obtener el estado inicial por REST y escuchar luego
@@ -36,14 +27,12 @@ tags:
     description: Comprobaciones de vida y disponibilidad del proceso.
   - name: Categorías públicas
     description: Catálogo visible para los clientes ciudadanos.
-  - name: Reportes públicos
-    description: Consulta, creación y seguimiento público de incidencias.
   - name: Cuenta ciudadana
     description: Registro, sesión y datos propios mediante DNI y token Bearer.
   - name: Tiempo real
     description: Handshakes y eventos WebSocket.
   - name: Autenticación administrativa
-    description: Sesión por cookie para el panel web; bloqueada en la implementación actual.
+    description: Sesión persistida por cookie para el panel web.
   - name: Reportes administrativos
     description: Gestión interna de reportes.
   - name: Equipos y asignaciones
@@ -75,15 +64,17 @@ paths:
       tags: [Estado del servidor]
       operationId: getReadiness
       summary: Comprobar que el proceso está listo
-      description: Actualmente responde `UP` sin verificar la conexión a PostgreSQL.
-      x-implementation-status: partial
+      description: Ejecuta una consulta mínima contra PostgreSQL.
+      x-implementation-status: implemented
       responses:
         '200':
-          description: El proceso responde; todavía no garantiza que la base esté disponible.
+          description: La base de datos está disponible.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: La base de datos no está disponible.
   /api/v1/categories:
     get:
       tags: [Categorías públicas]
@@ -109,70 +100,18 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
   /api/v1/reports:
-    get:
-      tags: [Reportes públicos]
-      operationId: listPublicReports
-      summary: Listar reportes visibles en el mapa
-      description: |-
-        Filtra por rectángulo geográfico, estado y categoría. Si no se envían límites,
-        se usa el mundo completo sin construir un polígono antipodal. El parámetro
-        `cursor` está registrado, pero el repositorio actual todavía no lo aplica.
-      x-implementation-status: partial
-      security:
-        - {}
-        - userBearer: []
-      parameters:
-        - $ref: '#/components/parameters/MinLat'
-        - $ref: '#/components/parameters/MinLng'
-        - $ref: '#/components/parameters/MaxLat'
-        - $ref: '#/components/parameters/MaxLng'
-        - $ref: '#/components/parameters/ReportStatusQuery'
-        - name: category
-          in: query
-          description: Slug de categoría, por ejemplo `bache`.
-          schema:
-            type: string
-        - $ref: '#/components/parameters/Cursor'
-      responses:
-        '200':
-          description: Página de reportes. `items` puede estar vacío.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportPublicPage'
-              example:
-                items:
-                  - id: c8bf2db1-c9fb-43bc-8ab7-86f83f77f7d2
-                    title: Luminaria apagada
-                    categorySlug: luminaria
-                    latitude: -32.8895
-                    longitude: -68.8458
-                    status: PENDING
-                    hasImage: false
-                    createdAt: '2026-10-14T18:15:00Z'
-                    updatedAt: '2026-10-14T18:15:00Z'
-                nextCursor: null
-                totalCount: 1
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
     post:
-      tags: [Reportes públicos]
+      tags: [Cuenta ciudadana]
       operationId: createReport
       summary: Crear un reporte ciudadano
       description: |-
-        Recibe `multipart/form-data`. Para `submissionMode=ACCOUNT` se exige un token
-        ciudadano válido; para `ANONYMOUS` la respuesta incluye un código de seguimiento
-        que se muestra una sola vez. El campo de archivo se llama exactamente `image`.
+        Recibe `multipart/form-data`, exige un token ciudadano válido y siempre asocia
+        el reporte a esa cuenta. `submissionMode`, si se envía, debe ser `ACCOUNT`.
+        El campo de archivo se llama exactamente `image`.
 
-        La imagen se procesa después de crear el reporte; esa secuencia todavía no es
-        una única transacción atómica.
-      x-implementation-status: partial
+        La imagen se valida por firma, tamaño y dimensiones antes de crear el reporte.
+      x-implementation-status: implemented
       security:
-        - {}
         - userBearer: []
       requestBody:
         required: true
@@ -190,111 +129,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateReportResponse'
-              examples:
-                anonymous:
-                  summary: Reporte anónimo
-                  value:
-                    id: c8bf2db1-c9fb-43bc-8ab7-86f83f77f7d2
-                    submissionMode: ANONYMOUS
-                    status: PENDING
-                    createdAt: '2026-10-14T18:15:00Z'
-                    trackingCode: 7Q2K9M4F8A
-                account:
-                  summary: Reporte asociado a una cuenta
-                  value:
-                    id: c8bf2db1-c9fb-43bc-8ab7-86f83f77f7d2
-                    submissionMode: ACCOUNT
-                    status: PENDING
-                    createdAt: '2026-10-14T18:15:00Z'
+              example:
+                id: c8bf2db1-c9fb-43bc-8ab7-86f83f77f7d2
+                submissionMode: ACCOUNT
+                status: PENDING
+                createdAt: '2026-10-14T18:15:00Z'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
-  /api/v1/reports/{id}:
-    get:
-      tags: [Reportes públicos]
-      operationId: getPublicReport
-      summary: Consultar el detalle público de un reporte
-      description: El DTO admite historial, pero el repositorio actual todavía no lo reconstruye por completo.
-      x-implementation-status: partial
-      parameters:
-        - $ref: '#/components/parameters/ReportId'
-      responses:
-        '200':
-          description: Detalle público sin datos personales del autor.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportPublicDetail'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
-  /api/v1/reports/{id}/image:
-    get:
-      tags: [Reportes públicos]
-      operationId: getReportImage
-      summary: Descargar la imagen de un reporte
-      x-implementation-status: implemented
-      parameters:
-        - $ref: '#/components/parameters/ReportId'
-      responses:
-        '200':
-          description: Bytes originales almacenados, con su tipo de contenido.
-          content:
-            image/jpeg:
-              schema:
-                type: string
-                format: binary
-            image/png:
-              schema:
-                type: string
-                format: binary
-            image/webp:
-              schema:
-                type: string
-                format: binary
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalError'
-  /api/v1/report-status:
-    post:
-      tags: [Reportes públicos]
-      operationId: getReportByTrackingCode
-      summary: Consultar un reporte anónimo por código
-      x-implementation-status: implemented
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TrackingCodeRequest'
-            example:
-              trackingCode: 7Q2K9M4F8A
-      responses:
-        '200':
-          description: Estado y ubicación del reporte asociado al código.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TrackingCodeResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -430,12 +275,8 @@ paths:
       tags: [Cuenta ciudadana]
       operationId: listOwnReports
       summary: Listar reportes asociados a la cuenta actual
-      description: |-
-        El endpoint funciona, pero la paginación tiene una incompatibilidad pendiente:
-        genera el siguiente cursor con un ID y el repositorio intenta leerlo como fecha.
-        Además, el mapeo actual puede enviar el ID de categoría en `categorySlug` y
-        devolver `hasImage=false` aunque exista una imagen.
-      x-implementation-status: partial
+      description: Devuelve únicamente reportes de la cuenta autenticada, con cursor por fecha, categoría e indicador de imagen reales.
+      x-implementation-status: implemented
       security:
         - userBearer: []
       parameters:
@@ -461,14 +302,14 @@ paths:
       tags: [Cuenta ciudadana]
       operationId: getOwnReport
       summary: Consultar el detalle de un reporte propio
-      x-implementation-status: stub
+      x-implementation-status: implemented
       security:
         - userBearer: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
       responses:
         '200':
-          description: Contrato previsto para cuando se implemente.
+          description: Detalle del reporte propio.
           content:
             application/json:
               schema:
@@ -477,42 +318,34 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
-  /api/v1/ws/public:
+  /api/v1/users/me/reports/{id}/image:
     get:
-      tags: [Tiempo real]
-      operationId: connectPublicWebSocket
-      summary: Abrir el canal público de eventos
-      description: |-
-        Handshake WebSocket. El bus actual vive en memoria, no conserva replay y se
-        pierde al reiniciar el proceso. Swagger UI no puede ejecutar este canal.
-      x-implementation-status: partial
-      x-websocket-events:
-        schema:
-          $ref: '#/components/schemas/WsEvent'
-        server-to-client:
-          - connected
-          - report.created
-          - report.updated
-          - report.assignment_changed
-          - report.priority_changed
-          - report.deleted
-          - statistics.updated
-          - heartbeat
-          - error
+      tags: [Cuenta ciudadana]
+      operationId: getOwnReportImage
+      summary: Descargar la imagen de un reporte propio
+      x-implementation-status: implemented
+      security:
+        - userBearer: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
       responses:
-        '101':
-          description: Protocolo cambiado a WebSocket.
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Evidencia binaria con su Content-Type original.
+          content:
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+            image/webp: {schema: {type: string, format: binary}}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/ws/admin:
     get:
       tags: [Tiempo real]
       operationId: connectAdminWebSocket
       summary: Abrir el canal administrativo de eventos
-      description: Requiere la sesión administrativa cuya infraestructura está incompleta.
-      x-implementation-status: blocked
+      description: Requiere una cookie administrativa vigente.
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       x-websocket-events:
@@ -538,13 +371,8 @@ paths:
       tags: [Autenticación administrativa]
       operationId: loginAdmin
       summary: Iniciar sesión administrativa
-      description: |-
-        Contrato previsto para el panel web. Actualmente la ruta exige una sesión
-        administrativa antes de ejecutar el login y no hay transporte de cookie
-        configurado, por lo que el flujo no puede completarse.
-      x-implementation-status: blocked
-      security:
-        - adminSessionCookie: []
+      description: Valida credenciales, crea una sesión persistida y emite una cookie HttpOnly.
+      x-implementation-status: implemented
       requestBody:
         required: true
         content:
@@ -553,10 +381,10 @@ paths:
               $ref: '#/components/schemas/AdminLoginRequest'
       responses:
         '200':
-          description: Datos mínimos del administrador autenticado; la cookie debe ser emitida por el servidor.
+          description: Datos del administrador y token CSRF; la cookie se emite en Set-Cookie.
           headers:
             Set-Cookie:
-              description: Cookie de sesión administrativa; todavía no se emite en la implementación actual.
+              description: Cookie de sesión administrativa.
               schema:
                 type: string
           content:
@@ -572,9 +400,11 @@ paths:
       tags: [Autenticación administrativa]
       operationId: logoutAdmin
       summary: Cerrar la sesión administrativa
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
       responses:
         '204':
           description: Sesión administrativa cerrada.
@@ -585,7 +415,7 @@ paths:
       tags: [Autenticación administrativa]
       operationId: getAdminProfile
       summary: Consultar la sesión administrativa actual
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
@@ -602,13 +432,13 @@ paths:
       tags: [Reportes administrativos]
       operationId: listAdminReports
       summary: Listar reportes para el panel administrativo
-      description: La ruta está registrada, pero responde HTTP 501.
-      x-implementation-status: stub
+      description: Lista global para el panel con filtros, búsqueda y cursor.
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportStatusQuery'
-        - name: category
+        - name: categorySlug
           in: query
           schema:
             type: string
@@ -626,32 +456,34 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: search
+          in: query
+          schema:
+            type: string
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
-          description: Contrato previsto para el listado.
+          description: Listado administrativo.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportAdminPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
   /api/v1/admin/reports/{id}:
     get:
       tags: [Reportes administrativos]
       operationId: getAdminReport
       summary: Consultar el detalle administrativo de un reporte
-      x-implementation-status: stub
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
       responses:
         '200':
-          description: Contrato previsto para el detalle.
+          description: Detalle administrativo con historiales y asignación activa.
           content:
             application/json:
               schema:
@@ -660,18 +492,17 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
     delete:
       tags: [Reportes administrativos]
       operationId: deleteAdminReport
       summary: Eliminar lógicamente un reporte
-      description: El caso de uso existe, pero depende de la autenticación administrativa bloqueada.
-      x-implementation-status: blocked
+      description: Conserva el historial relacionado y oculta el reporte de las consultas activas.
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
+        - $ref: '#/components/parameters/CsrfToken'
       responses:
         '204':
           description: Reporte eliminado lógicamente.
@@ -681,20 +512,39 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/admin/reports/{id}/image:
+    get:
+      tags: [Reportes administrativos]
+      operationId: getAdminReportImage
+      summary: Descargar la evidencia de cualquier reporte
+      x-implementation-status: implemented
+      security:
+        - adminSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Evidencia binaria con su Content-Type original.
+          content:
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+            image/webp: {schema: {type: string, format: binary}}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/admin/reports/{id}/status:
     patch:
       tags: [Reportes administrativos]
       operationId: updateReportStatus
       summary: Cambiar el estado de un reporte
-      description: |-
-        Usa control optimista mediante `version`, registra historial y publica un evento.
-        La respuesta HTTP actual intenta serializar el objeto de dominio directamente;
-        debe reemplazarse por un DTO estable antes de que el panel dependa del cuerpo.
-      x-implementation-status: blocked
+      description: Usa control optimista mediante `version`, registra historial y publica un evento.
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -703,7 +553,11 @@ paths:
               $ref: '#/components/schemas/UpdateStatusRequest'
       responses:
         '200':
-          description: Cambio aplicado. El cuerpo actual es provisional y no forma parte del contrato estable.
+          description: Cambio aplicado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportMutationResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -719,11 +573,12 @@ paths:
       tags: [Reportes administrativos]
       operationId: updateReportPriority
       summary: Cambiar prioridad y fecha objetivo
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -731,8 +586,12 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdatePriorityRequest'
       responses:
-        '204':
+        '200':
           description: Prioridad actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportMutationResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -748,11 +607,12 @@ paths:
       tags: [Equipos y asignaciones]
       operationId: assignReport
       summary: Asignar un reporte a equipo o responsable
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -776,20 +636,20 @@ paths:
       tags: [Equipos y asignaciones]
       operationId: unassignReport
       summary: Quitar la asignación de un reporte
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/ReportId'
+        - $ref: '#/components/parameters/CsrfToken'
         - name: version
           in: query
-          required: false
-          description: Versión esperada; la implementación usa `1` si se omite.
+          required: true
+          description: Versión esperada para el control optimista.
           schema:
             type: integer
             format: int64
-            minimum: 1
-            default: 1
+            minimum: 0
       responses:
         '204':
           description: Asignación eliminada.
@@ -806,12 +666,12 @@ paths:
       tags: [Equipos y asignaciones]
       operationId: listTeams
       summary: Listar equipos
-      x-implementation-status: stub
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
         '200':
-          description: Contrato previsto para el listado.
+          description: Equipos actuales.
           content:
             application/json:
               schema:
@@ -820,15 +680,15 @@ paths:
                   $ref: '#/components/schemas/TeamSummary'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
     post:
       tags: [Equipos y asignaciones]
       operationId: createTeam
       summary: Crear un equipo
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -855,14 +715,14 @@ paths:
       tags: [Equipos y asignaciones]
       operationId: getTeam
       summary: Consultar un equipo con sus miembros
-      x-implementation-status: stub
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/TeamId'
       responses:
         '200':
-          description: Contrato previsto para el detalle.
+          description: Equipo con sus miembros.
           content:
             application/json:
               schema:
@@ -871,17 +731,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
     patch:
       tags: [Equipos y asignaciones]
       operationId: updateTeam
       summary: Modificar un equipo
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -909,11 +768,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/TeamIdNamed'
       - $ref: '#/components/parameters/AdminUserId'
+      - $ref: '#/components/parameters/CsrfToken'
     put:
       tags: [Equipos y asignaciones]
       operationId: addTeamMember
       summary: Agregar un administrador a un equipo
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
@@ -929,7 +789,7 @@ paths:
       tags: [Equipos y asignaciones]
       operationId: removeTeamMember
       summary: Quitar un administrador de un equipo
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
@@ -946,12 +806,12 @@ paths:
       tags: [Equipos y asignaciones]
       operationId: listAssignees
       summary: Listar responsables posibles
-      x-implementation-status: stub
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
         '200':
-          description: Contrato previsto para responsables.
+          description: Administradores activos con sus equipos.
           content:
             application/json:
               schema:
@@ -960,14 +820,12 @@ paths:
                   $ref: '#/components/schemas/Assignee'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
   /api/v1/admin/categories:
     get:
       tags: [Categorías administrativas]
       operationId: listAdminCategories
       summary: Listar todas las categorías
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
@@ -987,9 +845,11 @@ paths:
       tags: [Categorías administrativas]
       operationId: createCategory
       summary: Crear una categoría
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -1016,11 +876,12 @@ paths:
       tags: [Categorías administrativas]
       operationId: updateCategory
       summary: Modificar una categoría
-      x-implementation-status: blocked
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
         - $ref: '#/components/parameters/CategoryId'
+        - $ref: '#/components/parameters/CsrfToken'
       requestBody:
         required: true
         content:
@@ -1049,13 +910,13 @@ paths:
       tags: [Estadísticas]
       operationId: getStatistics
       summary: Obtener agregados administrativos
-      description: El endpoint responde la estructura correcta, pero actualmente devuelve ceros y colecciones vacías.
-      x-implementation-status: placeholder
+      description: Calcula los agregados sobre los reportes activos en PostgreSQL.
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       responses:
         '200':
-          description: Estadísticas. Los datos actuales todavía no se calculan desde PostgreSQL.
+          description: Estadísticas actuales.
           content:
             application/json:
               schema:
@@ -1075,7 +936,7 @@ paths:
       tags: [Auditoría]
       operationId: listAuditEvents
       summary: Listar eventos de auditoría
-      x-implementation-status: stub
+      x-implementation-status: implemented
       security:
         - adminSessionCookie: []
       parameters:
@@ -1083,15 +944,13 @@ paths:
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
-          description: Contrato previsto para auditoría.
+          description: Página de eventos de auditoría.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditEventPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 components:
   securitySchemes:
     userBearer:
@@ -1102,8 +961,8 @@ components:
     adminSessionCookie:
       type: apiKey
       in: cookie
-      name: admin_session
-      description: Contrato objetivo para la sesión del panel; el transporte de cookie todavía no está configurado.
+      name: mapa_urbano_admin
+      description: Cookie HttpOnly emitida por el login administrativo.
   parameters:
     ReportId:
       name: id
@@ -1145,11 +1004,18 @@ components:
       schema:
         type: string
         format: uuid
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      description: Token devuelto por login o por GET /api/v1/admin/auth/me.
+      schema:
+        type: string
     Cursor:
       name: cursor
       in: query
       required: false
-      description: Cursor opaco devuelto por la página anterior. Algunos listados aún no lo aplican correctamente.
+      description: Cursor opaco devuelto por la página anterior.
       schema:
         type: string
     Limit:
@@ -1224,6 +1090,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiErrorEnvelope'
+    Forbidden:
+      description: Token CSRF ausente o inválido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
     NotFound:
       description: El recurso solicitado no existe o no es visible para la sesión.
       content:
@@ -1255,18 +1127,6 @@ components:
               message: No pudimos procesar la solicitud.
               details: []
               requestId: 7d00b765-56db-43fd-8447-0a910a9861dc
-    NotImplemented:
-      description: Ruta registrada cuyo caso de uso todavía no está implementado.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ApiErrorEnvelope'
-          example:
-            error:
-              code: ENDPOINT_NOT_IMPLEMENTED
-              message: El endpoint todavía no está implementado.
-              details: []
-              requestId: 7d00b765-56db-43fd-8447-0a910a9861dc
   schemas:
     HealthResponse:
       type: object
@@ -1286,8 +1146,14 @@ components:
       example: MEDIUM
     SubmissionMode:
       type: string
+      description: Los reportes nuevos son ACCOUNT; ANONYMOUS solo puede aparecer en datos históricos administrativos.
       enum: [ACCOUNT, ANONYMOUS]
-      example: ANONYMOUS
+      example: ACCOUNT
+    AccountSubmissionMode:
+      type: string
+      description: Modo admitido al crear reportes nuevos.
+      enum: [ACCOUNT]
+      example: ACCOUNT
     ApiErrorEnvelope:
       type: object
       additionalProperties: false
@@ -1385,7 +1251,7 @@ components:
     CreateReportMultipart:
       type: object
       additionalProperties: false
-      required: [title, description, categorySlug, latitude, longitude, submissionMode]
+      required: [title, description, categorySlug, latitude, longitude]
       properties:
         title:
           type: string
@@ -1411,7 +1277,7 @@ components:
           maximum: 180
           example: -68.8458
         submissionMode:
-          $ref: '#/components/schemas/SubmissionMode'
+          $ref: '#/components/schemas/AccountSubmissionMode'
         image:
           type: string
           format: binary
@@ -1425,17 +1291,12 @@ components:
           type: string
           format: uuid
         submissionMode:
-          $ref: '#/components/schemas/SubmissionMode'
+          $ref: '#/components/schemas/AccountSubmissionMode'
         status:
           $ref: '#/components/schemas/ReportStatus'
         createdAt:
           type: string
           format: date-time
-        trackingCode:
-          type: string
-          nullable: true
-          description: Solo se entrega al crear un reporte anónimo.
-          example: 7Q2K9M4F8A
     ReportPublicSummary:
       type: object
       additionalProperties: false
@@ -1492,45 +1353,6 @@ components:
         changedAt:
           type: string
           format: date-time
-    TrackingCodeRequest:
-      type: object
-      additionalProperties: false
-      required: [trackingCode]
-      properties:
-        trackingCode:
-          type: string
-          minLength: 1
-          example: 7Q2K9M4F8A
-    TrackingCodeResponse:
-      type: object
-      additionalProperties: false
-      required: [id, status, categorySlug, latitude, longitude, hasImage, createdAt, updatedAt, statusHistory]
-      properties:
-        id:
-          type: string
-          format: uuid
-        status:
-          $ref: '#/components/schemas/ReportStatus'
-        categorySlug:
-          type: string
-        latitude:
-          type: number
-          format: double
-        longitude:
-          type: number
-          format: double
-        hasImage:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        statusHistory:
-          type: array
-          items:
-            $ref: '#/components/schemas/StatusHistoryEntry'
     ReportPublicPage:
       type: object
       additionalProperties: false
@@ -1630,21 +1452,27 @@ components:
     AdminLoginResponse:
       type: object
       additionalProperties: false
-      required: [adminUserId, username]
+      required: [adminUserId, username, csrfToken]
       properties:
         adminUserId:
           type: string
           format: uuid
         username:
           type: string
+        csrfToken:
+          type: string
     AdminSessionResponse:
       type: object
       additionalProperties: false
-      required: [adminUserId]
+      required: [adminUserId, username, csrfToken]
       properties:
         adminUserId:
           type: string
           format: uuid
+        username:
+          type: string
+        csrfToken:
+          type: string
     UpdateStatusRequest:
       type: object
       additionalProperties: false
@@ -1655,7 +1483,7 @@ components:
         version:
           type: integer
           format: int64
-          minimum: 1
+          minimum: 0
         note:
           type: string
           nullable: true
@@ -1673,7 +1501,7 @@ components:
         version:
           type: integer
           format: int64
-          minimum: 1
+          minimum: 0
     AssignmentRequest:
       type: object
       additionalProperties: false
@@ -1690,7 +1518,18 @@ components:
         version:
           type: integer
           format: int64
-          minimum: 1
+          minimum: 0
+    ReportMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, status, priority, version, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        status: {$ref: '#/components/schemas/ReportStatus'}
+        priority: {$ref: '#/components/schemas/ReportPriority'}
+        dueAt: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: int64}
+        updatedAt: {type: string, format: date-time}
     ReportAdminSummary:
       type: object
       additionalProperties: false

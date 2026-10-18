@@ -9,15 +9,17 @@ import com.mapaurbano.reports.domain.SubmissionMode
 import com.mapaurbano.reports.dto.CreateReportResponse
 import com.mapaurbano.shared.domain.FieldError
 import com.mapaurbano.shared.domain.ValidationException
-import java.security.MessageDigest
-import java.security.SecureRandom
 import java.time.Instant
-import java.util.Base64
 import java.util.UUID
+import com.mapaurbano.notifications.application.EventBus
+import com.mapaurbano.notifications.dto.WsEvent
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class CreateReportUseCase(
     private val reportRepository: ReportRepository,
     private val categoryRepository: CategoryRepository,
+    private val eventBus: EventBus,
 ) {
     suspend fun execute(
         title: String,
@@ -27,73 +29,63 @@ class CreateReportUseCase(
         longitude: Double,
         submissionMode: SubmissionMode,
         userId: String?,
-        // TODO: image parameter when processing media
     ): CreateReportResponse {
         val errors = mutableListOf<FieldError>()
         
-        if (title.isBlank()) errors.add(FieldError("title", "El tÃ­tulo es obligatorio"))
+        if (title.isBlank() || title.length > 150) errors.add(FieldError("title", "El título debe tener entre 1 y 150 caracteres"))
         if (description.isBlank()) errors.add(FieldError("description", "La descripciÃ³n es obligatoria"))
-        if (latitude < -90 || latitude > 90) errors.add(FieldError("latitude", "Latitud invÃ¡lida"))
-        if (longitude < -180 || longitude > 180) errors.add(FieldError("longitude", "Longitud invÃ¡lida"))
+        if (!latitude.isFinite() || latitude < -90 || latitude > 90) errors.add(FieldError("latitude", "Latitud inválida"))
+        if (!longitude.isFinite() || longitude < -180 || longitude > 180) errors.add(FieldError("longitude", "Longitud inválida"))
         
         val category = categoryRepository.findBySlug(categorySlug)
-        if (category == null) {
-            errors.add(FieldError("categorySlug", "CategorÃ­a no encontrada"))
+        if (category == null || !category.isActive) {
+            errors.add(FieldError("categorySlug", "Categoría no encontrada o inactiva"))
         }
 
-        if (submissionMode == SubmissionMode.ACCOUNT && userId == null) {
-            errors.add(FieldError("submissionMode", "Se requiere sesiÃ³n para el modo cuenta"))
+        if (submissionMode != SubmissionMode.ACCOUNT) {
+            errors.add(FieldError("submissionMode", "Los reportes requieren una cuenta autenticada"))
+        }
+        if (userId == null) {
+            errors.add(FieldError("submissionMode", "Se requiere una sesión válida"))
         }
 
         if (errors.isNotEmpty()) {
             throw ValidationException(details = errors)
         }
 
-        var trackingCode: String? = null
-        var trackingCodeHash: ByteArray? = null
-        var trackingCodeHint: String? = null
-
-        if (submissionMode == SubmissionMode.ANONYMOUS) {
-            trackingCode = generateTrackingCode()
-            val digest = MessageDigest.getInstance("SHA-256")
-            trackingCodeHash = digest.digest(trackingCode.toByteArray(Charsets.UTF_8))
-            trackingCodeHint = trackingCode.substring(0, 4) + "****"
-        }
-
         val now = Instant.now()
         val report = Report(
             id = UUID.randomUUID().toString(),
             categoryId = category!!.id,
-            userId = if (submissionMode == SubmissionMode.ACCOUNT) userId else null,
+            userId = requireNotNull(userId),
             status = ReportStatus.PENDING,
             priority = ReportPriority.MEDIUM,
             title = title,
             description = description,
             latitude = latitude,
             longitude = longitude,
-            trackingCodeHash = trackingCodeHash,
-            trackingCodeHint = trackingCodeHint,
+            trackingCodeHash = null,
+            trackingCodeHint = null,
             createdAt = now,
             updatedAt = now
         )
 
         val createdReport = reportRepository.create(report)
-        // TODO: Guardar imagen si viene adjunta y publicar evento de creaciÃ³n
+        eventBus.publish(
+            WsEvent(
+                type = "report.created",
+                occurredAt = now.toString(),
+                payload = buildJsonObject { put("reportId", createdReport.id) },
+            ),
+        )
 
         return CreateReportResponse(
             id = createdReport.id,
             submissionMode = createdReport.submissionMode.name,
             status = createdReport.status.name,
             createdAt = createdReport.createdAt.toString(),
-            trackingCode = trackingCode // Solo se devuelve al crearlo anÃ³nimamente
+            trackingCode = null,
         )
-    }
-
-    private fun generateTrackingCode(): String {
-        val secureRandom = SecureRandom()
-        val bytes = ByteArray(8)
-        secureRandom.nextBytes(bytes)
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).uppercase().take(10)
     }
 }
 

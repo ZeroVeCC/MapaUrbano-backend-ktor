@@ -1,6 +1,8 @@
 package com.mapaurbano.assignments.api
 
-import com.mapaurbano.application.AdminSession
+import com.mapaurbano.application.AdminPrincipal
+import com.mapaurbano.application.hasValidAdminCsrf
+import com.mapaurbano.shared.api.respondApiError
 import com.mapaurbano.assignments.application.AssignReportUseCase
 import com.mapaurbano.assignments.application.UnassignReportUseCase
 import com.mapaurbano.reports.dto.AssignmentRequest
@@ -20,26 +22,33 @@ fun Route.assignmentRoutes() {
     put("/reports/{id}/assignment") {
         val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
         val request = call.receive<AssignmentRequest>()
-        val session = call.principal<AdminSession>()
+        val session = call.principal<AdminPrincipal>()
             ?: return@put call.respond(HttpStatusCode.Unauthorized)
+        if (!call.hasValidAdminCsrf(session)) {
+            return@put call.respondApiError(HttpStatusCode.Forbidden, "CSRF_INVALID", "El token CSRF es inválido.")
+        }
 
         assignReportUseCase.execute(
             reportId = id,
             teamId = request.teamId,
             responsibleAdminUserId = request.responsibleAdminUserId,
             version = request.version,
-            adminUserId = session.userId
+            adminUserId = session.adminUserId
         )
         call.respond(HttpStatusCode.NoContent)
     }
 
     delete("/reports/{id}/assignment") {
         val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
-        val version = call.request.queryParameters["version"]?.toLongOrNull() ?: 1L
-        val session = call.principal<AdminSession>()
+        val version = call.request.queryParameters["version"]?.toLongOrNull()
+            ?: throw com.mapaurbano.shared.domain.ValidationException(message = "version es obligatorio")
+        val session = call.principal<AdminPrincipal>()
             ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+        if (!call.hasValidAdminCsrf(session)) {
+            return@delete call.respondApiError(HttpStatusCode.Forbidden, "CSRF_INVALID", "El token CSRF es inválido.")
+        }
 
-        unassignReportUseCase.execute(id, version, session.userId)
+        unassignReportUseCase.execute(id, version, session.adminUserId)
         call.respond(HttpStatusCode.NoContent)
     }
 }

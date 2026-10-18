@@ -1,57 +1,35 @@
 ﻿package com.mapaurbano.reports.api
 
 import com.mapaurbano.reports.domain.SubmissionMode
-import com.mapaurbano.reports.dto.TrackingCodeRequest
 import com.mapaurbano.reports.application.CreateReportUseCase
 import com.mapaurbano.media.application.ProcessImageUseCase
-import com.mapaurbano.reports.application.GetPublicReportUseCase
-import com.mapaurbano.reports.application.GetReportByTrackingCodeUseCase
-import com.mapaurbano.reports.application.ListPublicReportsUseCase
+import com.mapaurbano.shared.domain.ValidationException
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
-import io.ktor.http.content.streamProvider
 import com.mapaurbano.auth.application.UserPrincipal
 import io.ktor.server.auth.principal
-import io.ktor.server.request.receive
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.koin.ktor.ext.inject
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 
-fun Route.publicReportRoutes() {
+fun Route.authenticatedReportRoutes() {
     val createReportUseCase by inject<CreateReportUseCase>()
     val processImageUseCase by inject<ProcessImageUseCase>()
-    val listPublicReportsUseCase by inject<ListPublicReportsUseCase>()
-    val getPublicReportUseCase by inject<GetPublicReportUseCase>()
-    val getReportByTrackingCodeUseCase by inject<GetReportByTrackingCodeUseCase>()
 
     route("/reports") {
-        get {
-            val minLat = call.request.queryParameters["minLat"]?.toDoubleOrNull() ?: -90.0
-            val minLng = call.request.queryParameters["minLng"]?.toDoubleOrNull() ?: -180.0
-            val maxLat = call.request.queryParameters["maxLat"]?.toDoubleOrNull() ?: 90.0
-            val maxLng = call.request.queryParameters["maxLng"]?.toDoubleOrNull() ?: 180.0
-            val status = call.request.queryParameters["status"]
-            val category = call.request.queryParameters["category"]
-            val cursor = call.request.queryParameters["cursor"]
-
-            val response = listPublicReportsUseCase.execute(
-                minLat, minLng, maxLat, maxLng, status, category, cursor
-            )
-            call.respond(HttpStatusCode.OK, response)
-        }
-
         post {
             var title = ""
             var description = ""
             var categorySlug = ""
-            var lat = 0.0
-            var lng = 0.0
-            var mode = SubmissionMode.ANONYMOUS
+            var lat: Double? = null
+            var lng: Double? = null
+            var mode = SubmissionMode.ACCOUNT
             var imageBytes: ByteArray? = null
             var imageContentType: String? = null
             var imageFileName: String? = null
@@ -64,54 +42,53 @@ fun Route.publicReportRoutes() {
                             "title" -> title = part.value
                             "description" -> description = part.value
                             "categorySlug" -> categorySlug = part.value
-                            "latitude" -> lat = part.value.toDoubleOrNull() ?: 0.0
-                            "longitude" -> lng = part.value.toDoubleOrNull() ?: 0.0
+                            "latitude" -> lat = part.value.toDoubleOrNull()
+                                ?: throw ValidationException("Latitud inválida")
+                            "longitude" -> lng = part.value.toDoubleOrNull()
+                                ?: throw ValidationException("Longitud inválida")
                             "submissionMode" -> mode = try {
                                 SubmissionMode.valueOf(part.value.uppercase())
                             } catch (_: IllegalArgumentException) {
-                                SubmissionMode.ANONYMOUS
+                                throw ValidationException("Modo de envío inválido")
                             }
                         }
                     }
                     is PartData.FileItem -> {
                         if (part.name == "image") {
-                            imageBytes = part.streamProvider().readBytes()
+                            imageBytes = part.provider()
+                                .readRemaining((ProcessImageUseCase.MAX_IMAGE_BYTES + 1).toLong())
+                                .readByteArray()
                             imageContentType = part.contentType?.toString() ?: "image/jpeg"
                             imageFileName = part.originalFileName
                         }
                     }
                     else -> {}
                 }
-                part.dispose()
+                part.release()
             }
 
             val userId = call.principal<UserPrincipal>()?.userId
+                ?: return@post call.respond(HttpStatusCode.Unauthorized)
+            val validLatitude = lat ?: throw ValidationException("Latitud obligatoria")
+            val validLongitude = lng ?: throw ValidationException("Longitud obligatoria")
+            if (imageBytes != null && imageContentType != null) {
+                processImageUseCase.inspect(requireNotNull(imageBytes), requireNotNull(imageContentType))
+            }
             val response = createReportUseCase.execute(
-                title, description, categorySlug, lat, lng, mode, userId
+                title, description, categorySlug, validLatitude, validLongitude, mode, userId
             )
 
             if (imageBytes != null && imageContentType != null) {
                 processImageUseCase.execute(
                     reportId = response.id,
-                    data = imageBytes!!,
-                    contentType = imageContentType!!,
+                    data = requireNotNull(imageBytes),
+                    contentType = requireNotNull(imageContentType),
                     originalFilename = imageFileName
                 )
             }
             call.respond(HttpStatusCode.Created, response)
         }
 
-        get("/{id}") {
-            val id = call.parameters["id"] ?: throw IllegalArgumentException("ID is required")
-            val response = getPublicReportUseCase.execute(id)
-            call.respond(HttpStatusCode.OK, response)
-        }
-    }
-
-    post("/report-status") {
-        val request = call.receive<TrackingCodeRequest>()
-        val response = getReportByTrackingCodeUseCase.execute(request.trackingCode)
-        call.respond(HttpStatusCode.OK, response)
     }
 }
 

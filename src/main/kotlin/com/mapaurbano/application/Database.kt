@@ -32,4 +32,5 @@ fun Application.configureDatabase() {
 
     log.info("Conectando Exposed...")
     Database.connect(dataSource)
+    bootstrapAdminIfConfigured()
 }
