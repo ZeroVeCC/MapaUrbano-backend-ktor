@@ -12,6 +12,8 @@ La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo 
 
 El **[cierre del backend y plan de adecuación web del 18 de octubre](docs/CIERRE_BACKEND_Y_PLAN_WEB_2026-10-18.md)** registra la implementación de privacidad, administración, CSRF, consultas, pruebas PostGIS y el mensaje de trabajo que debe recibir el equipo web.
 
+Las **[instrucciones detalladas para las IA de Android y web](docs/TAREAS_IA_ANDROID_Y_WEB_2026-10-18.md)** parten de los últimos `main` revisados y contienen tareas, contratos, pruebas y criterios de aceptación listos para copiar a cada equipo.
+
 El **[reescaneo y plan de privacidad del 15 de octubre](docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md)** registra las revisiones actuales de los cuatro repositorios, el problema de visibilidad global de reportes y las tareas separadas para backend, Android y web.
 
 El **[reescaneo específico del frontend web del 18 de octubre](docs/REESCANEO_WEB_2026-10-18.md)** compara los tres commits nuevos con Swagger, registra build, pruebas y GitHub Actions, y deja el trabajo pendiente priorizado para el responsable web.

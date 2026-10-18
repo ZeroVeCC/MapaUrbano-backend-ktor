@@ -822,3 +822,21 @@ El estado y las instrucciones entregables para el equipo web están en
 `docs/CIERRE_BACKEND_Y_PLAN_WEB_2026-10-18.md`. Las secciones anteriores se
 conservan como evidencia histórica; cuando contradigan esta actualización, rige
 esta sección y el OpenAPI versionado.
+
+## 18. Revisión posterior de Android y consignas para IA — 18 de octubre de 2026
+
+Se verificaron nuevamente las ramas remotas después del cierre del backend. Web
+permanece en `85832a4183d6d1fde96b49161bee1142445f3cc6`. Android avanzó a
+`4cfc8242ef6da96eec7d97302fdf7cc0b36bea43` mediante el PR #2.
+
+Android ya exige cuenta, retiró el seguimiento anónimo, conserva el mapa cuando no
+hay resultados y mejoró los filtros. Sin embargo, todavía ejecuta el listado y el
+detalle públicos retirados por el backend, mezcla esas respuestas con reportes
+propios, no limpia todos los datos entre cuentas, consume una sola página y simula
+la fotografía. Por ello todavía no es compatible con el contrato privado publicado
+en `34d219e`.
+
+Las consignas autocontenidas y listas para entregar a una IA de cada repositorio se
+registran en `docs/TAREAS_IA_ANDROID_Y_WEB_2026-10-18.md`. Ese documento reemplaza
+las listas anteriores cuando haya contradicciones sobre rutas ya implementadas en
+el backend.
