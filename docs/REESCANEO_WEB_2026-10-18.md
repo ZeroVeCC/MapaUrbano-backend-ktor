@@ -1,5 +1,9 @@
 # Reescaneo del frontend web
 
+> **Corte histórico.** Web avanzó posteriormente a `fced3ea`. La auditoría
+> vigente, con el nuevo delta, los errores de contrato y el diagnóstico exacto de
+> CI, está en `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md`.
+
 **Fecha de corte:** 18 de octubre de 2026  
 **Repositorio auditado:** `Santy112/MapaUrbano-frontend-web`  
 **Rama:** `main`  

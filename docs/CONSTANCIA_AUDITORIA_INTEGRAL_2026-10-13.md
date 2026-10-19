@@ -2,13 +2,13 @@
 
 **Fecha de corte original:** 13 de octubre de 2026
 
-**Última actualización:** 19 de octubre de 2026, después del reescaneo de los cuatro repositorios
+**Última actualización:** 19 de octubre de 2026, después de auditar los tres repositorios principales
 
 **Responsable de esta constancia:** revisión técnica realizada sobre los repositorios publicados de Mapa Urbano  
 **Repositorio donde se conserva:** `ZeroVeCC/MapaUrbano-backend-ktor`  
 **Propósito:** dejar una referencia verificable de qué existe, qué fue probado, qué está integrado y qué falta para que los tres componentes funcionen juntos.
 
-> Esta constancia describe el estado observado en las revisiones exactas indicadas abajo. Una rama distinta o un cambio posterior puede modificar las conclusiones. Los repositorios de Android, web y el monorepo original se analizaron en copias temporales de solo referencia; esta auditoría únicamente modifica el repositorio del backend.
+> Esta constancia describe el estado observado en las revisiones exactas indicadas abajo. Una rama distinta o un cambio posterior puede modificar las conclusiones. Android y web se analizan en copias temporales de solo referencia; esta auditoría únicamente modifica el repositorio del backend. Desde el 19 de octubre, el monorepo original queda fuera del alcance salvo pedido expreso del usuario.
 
 ## 1. Resultado general
 
@@ -769,15 +769,20 @@ Se verificaron ramas, commits, pull requests y ejecuciones mediante metadatos p�
 ## 15. Reglas de continuidad para próximas tareas
 
 1. Modificar y subir únicamente `ZeroVeCC/MapaUrbano-backend-ktor`, salvo instrucción expresa posterior del usuario.
-2. Tratar Android, web y monorepo como referencias de lectura.
+2. Tratar Android y web como referencias de solo lectura.
 3. Desde el 14 de octubre, tomar Android `main`/`8c866de` o posterior como referencia; la antigua rama Stitch fue fusionada y eliminada.
 4. La autenticación ciudadana vigente es por DNI, no correo.
 5. Las correcciones de escritura y lectura PostGIS ya están en `main` y tienen pruebas.
 6. Ejecutar pruebas unitarias e integración antes de subir cambios que afecten persistencia o rutas.
 7. Subir los cambios autorizados al `main` del backend y comprobar GitHub Actions.
 8. Actualizar esta constancia cuando cambie un hito estructural, una referencia revisada o el estado de integración.
-9. La política solicitada el 15 de octubre exige cuenta ciudadana y visibilidad por pertenencia; hasta implementarla, las rutas públicas de reportes deben considerarse un riesgo crítico.
-10. Usar `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md` como plan coordinado para backend, Android y web.
+9. La política de cuenta ciudadana y visibilidad por pertenencia ya está aplicada
+   en backend y Android. No reabrir rutas públicas ni el alta anónima.
+10. Usar `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md` como estado y plan
+    coordinado vigente; los reescaneos anteriores quedan como trazabilidad.
+11. No consultar ni auditar el monorepo original `Jquincal/Mapa-Urbano`, salvo
+    que el usuario lo solicite expresamente. Su contenido queda como antecedente
+    histórico y no como componente vigente.
 
 ## 16. Conclusión técnica
 
@@ -790,7 +795,9 @@ Esta constancia debe leerse junto con:
 - `docs/ESTADO_ACTUAL_Y_DECISIONES.md` para las decisiones del backend;
 - `docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md` para el diagnóstico de visibilidad y las tareas separadas por equipo;
 - `docs/REESCANEO_WEB_2026-10-18.md` para el último estado publicado del panel web y su plan priorizado;
-- la rama `develop` del monorepo original para requisitos y alcance.
+- `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md` para el estado vigente de los
+  tres componentes. Las referencias al monorepo de esta constancia son solo
+  antecedentes y no habilitan su consulta en auditorías futuras.
 
 ## 17. Actualización de cierre backend — 18 de octubre de 2026
 
@@ -863,3 +870,33 @@ prueba E2E con dos ciudadanos y un administrador.
 El detalle de archivos, commits, pruebas, compatibilidad y tareas restantes se
 conserva en `docs/REESCANEO_REPOSITORIOS_2026-10-19.md`. Esta sección y ese documento
 son el estado vigente cuando contradigan conclusiones históricas anteriores.
+
+## 20. Auditoría vigente de los tres repositorios — 19 de octubre de 2026
+
+Por decisión del usuario, el monorepo original deja de participar en auditorías,
+comparaciones y planes ordinarios. Desde este corte se revisan únicamente backend
+Ktor, Android y web; el repositorio histórico solo se consultará ante una
+instrucción expresa.
+
+Las referencias verificadas fueron backend `a9e418d`, Android `e103585` y web
+`fced3ea`. Backend y Android no incorporaron código nuevo desde el corte anterior
+y mantienen GitHub Actions en verde. Web agregó tres commits, 26 archivos
+modificados, 843 líneas agregadas y 644 eliminadas.
+
+Web alineó login, cookie, CSRF, UUID, enums y cursor de manera parcial. Todavía
+mezcla DTO de resumen, detalle y mutación; no descarga imágenes reales; no envía
+asignaciones desde la interfaz; interpreta incorrectamente estadísticas y
+auditoría; conserva equipos simulados y no conecta el WebSocket. Su CI falla
+porque usa Node 20 con Angular 22, cuyas dependencias exigen Node 22.22.3 o 24.15
+como mínimo. Con Node 24 se verificaron localmente 8 pruebas correctas y build de
+producción correcto.
+
+La auditoría encontró además un defecto backend pendiente: la cookie admin usa
+`Path=/api/v1/admin`, por lo que un navegador no la envía al handshake
+`/api/v1/ws/admin`. El canal WebSocket administrativo no puede autenticarse hasta
+ampliar la ruta de la cookie o reubicar el endpoint y agregar una prueba real de
+handshake.
+
+El informe completo, la matriz operación por operación y el plan priorizado se
+conservan en `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md`. Esta sección y ese
+documento son el estado vigente cuando contradigan cortes anteriores.

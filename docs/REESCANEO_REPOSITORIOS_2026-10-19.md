@@ -1,5 +1,10 @@
 # Reescaneo de repositorios — 19 de octubre de 2026
 
+> **Corte histórico.** Una auditoría posterior del mismo día comprobó cambios
+> nuevos en web y retiró el monorepo original del alcance habitual. Usar
+> `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md` como estado vigente. El
+> repositorio antiguo solo se vuelve a consultar ante pedido expreso del usuario.
+
 ## Alcance
 
 Se revisaron nuevamente las referencias publicadas de los cuatro repositorios de

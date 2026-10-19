@@ -6,7 +6,9 @@ Este repositorio contiene el backend independiente (standalone) del proyecto Map
 
 La [revisión de integración del 6 de octubre](docs/INTEGRACION_REPOSITORIOS_2026-10-06.md) queda como antecedente histórico de las ramas y diferencias detectadas antes de conectar Android.
 
-La **[constancia de auditoría integral, actualizada el 18 de octubre de 2026](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra las revisiones exactas de los cuatro repositorios, incluida la integración Android del PR #1, la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
+La **[constancia de auditoría integral](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026-10-13.md)** registra la cronología del trabajo, el estado de cada requisito, las pruebas ejecutadas y la ruta priorizada para completar la integración.
+
+La **[auditoría vigente de los tres repositorios principales del 19 de octubre](docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md)** compara backend, Android y web en sus `main` actuales. El monorepo original quedó retirado del alcance salvo pedido expreso del usuario.
 
 La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo probar la API desde `http://localhost:8080/swagger`, cómo autorizarse con el token ciudadano y cómo interpretar el estado real de cada endpoint.
 
@@ -14,7 +16,7 @@ El **[cierre del backend y plan de adecuación web del 18 de octubre](docs/CIERR
 
 Las **[instrucciones detalladas para las IA de Android y web](docs/TAREAS_IA_ANDROID_Y_WEB_2026-10-18.md)** parten de los últimos `main` revisados y contienen tareas, contratos, pruebas y criterios de aceptación listos para copiar a cada equipo.
 
-El **[reescaneo de los cuatro repositorios del 19 de octubre](docs/REESCANEO_REPOSITORIOS_2026-10-19.md)** registra los dos commits nuevos de Android, su compatibilidad con el backend privado, el CI de cada componente y el trabajo que todavía falta para la prueba conjunta.
+El **[reescaneo anterior del 19 de octubre](docs/REESCANEO_REPOSITORIOS_2026-10-19.md)** registra los dos commits de integración privada de Android y queda como corte histórico anterior a los cambios web posteriores.
 
 El **[reescaneo y plan de privacidad del 15 de octubre](docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md)** registra las revisiones actuales de los cuatro repositorios, el problema de visibilidad global de reportes y las tareas separadas para backend, Android y web.
 

@@ -16,8 +16,15 @@ contrato HTTP definitivo es el OpenAPI del backend en
 > **Actualización del 19 de octubre:** Android completó las tareas A01–A07 en los
 > commits `30d301a` y `e103585`; su workflow está verde. Ese bloque se conserva
 > como especificación y trazabilidad, no como lista pendiente. Solo falta su
-> validación física. Web no cambió y su bloque continúa plenamente vigente. Ver
-> `docs/REESCANEO_REPOSITORIOS_2026-10-19.md`.
+> validación física. En ese primer corte del día, web todavía no había cambiado.
+> Ver `docs/REESCANEO_REPOSITORIOS_2026-10-19.md`.
+>
+> **Segunda actualización del 19 de octubre:** web avanzó a `fced3ea` y resolvió
+> parte de W01–W03, pero el contrato sigue roto en reportes, equipos,
+> estadísticas, auditoría, imágenes y asignaciones. Su CI también continúa rojo
+> por ejecutar Angular 22 con Node 20. La lista vigente y las correcciones exactas
+> están en `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md`; usar ese documento
+> cuando contradiga el prompt histórico incluido aquí.
 
 ## Prompt para la IA responsable de Android
 
