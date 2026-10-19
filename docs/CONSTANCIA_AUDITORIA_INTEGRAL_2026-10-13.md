@@ -2,7 +2,7 @@
 
 **Fecha de corte original:** 13 de octubre de 2026
 
-**Última actualización:** 18 de octubre de 2026, después del reescaneo específico del frontend web
+**Última actualización:** 19 de octubre de 2026, después del reescaneo de los cuatro repositorios
 
 **Responsable de esta constancia:** revisión técnica realizada sobre los repositorios publicados de Mapa Urbano  
 **Repositorio donde se conserva:** `ZeroVeCC/MapaUrbano-backend-ktor`  
@@ -840,3 +840,26 @@ Las consignas autocontenidas y listas para entregar a una IA de cada repositorio
 registran en `docs/TAREAS_IA_ANDROID_Y_WEB_2026-10-18.md`. Ese documento reemplaza
 las listas anteriores cuando haya contradicciones sobre rutas ya implementadas en
 el backend.
+
+## 19. Reescaneo de cierre Android — 19 de octubre de 2026
+
+Se verificaron otra vez las referencias remotas de backend, Android, web y
+monorepo. Backend permanece en `907e0c3`, web en `85832a4`, monorepo `main` en
+`13150ab` y `develop` en `9b28a7e`. Android es el único componente con código nuevo:
+avanzó de `4cfc824` a `e103585` mediante los commits `30d301a` y `e103585`.
+
+La nueva revisión Android retiró las lecturas públicas, consume listado, detalle e
+imagen propios, implementa paginación por cursor, cámara/galería y multipart real,
+descarta respuestas de sesiones anteriores y limpia los datos privados antes de
+esperar el logout del servidor. GitHub Actions `39260551604` terminó correctamente.
+Con esto, Android y backend quedan alineados en código con la política de cuenta
+obligatoria y pertenencia.
+
+La validación física de Android sigue pendiente y el panel web no cambió: sus tres
+workflows continúan rojos y sigue necesitando adaptación completa a cookie, CSRF,
+UUID, cursor, `version` y DTO administrativos. El sistema todavía requiere una
+prueba E2E con dos ciudadanos y un administrador.
+
+El detalle de archivos, commits, pruebas, compatibilidad y tareas restantes se
+conserva en `docs/REESCANEO_REPOSITORIOS_2026-10-19.md`. Esta sección y ese documento
+son el estado vigente cuando contradigan conclusiones históricas anteriores.

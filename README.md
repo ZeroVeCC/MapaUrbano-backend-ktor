@@ -14,6 +14,8 @@ El **[cierre del backend y plan de adecuación web del 18 de octubre](docs/CIERR
 
 Las **[instrucciones detalladas para las IA de Android y web](docs/TAREAS_IA_ANDROID_Y_WEB_2026-10-18.md)** parten de los últimos `main` revisados y contienen tareas, contratos, pruebas y criterios de aceptación listos para copiar a cada equipo.
 
+El **[reescaneo de los cuatro repositorios del 19 de octubre](docs/REESCANEO_REPOSITORIOS_2026-10-19.md)** registra los dos commits nuevos de Android, su compatibilidad con el backend privado, el CI de cada componente y el trabajo que todavía falta para la prueba conjunta.
+
 El **[reescaneo y plan de privacidad del 15 de octubre](docs/REESCANEO_Y_PLAN_PRIVACIDAD_2026-10-15.md)** registra las revisiones actuales de los cuatro repositorios, el problema de visibilidad global de reportes y las tareas separadas para backend, Android y web.
 
 El **[reescaneo específico del frontend web del 18 de octubre](docs/REESCANEO_WEB_2026-10-18.md)** compara los tres commits nuevos con Swagger, registra build, pruebas y GitHub Actions, y deja el trabajo pendiente priorizado para el responsable web.

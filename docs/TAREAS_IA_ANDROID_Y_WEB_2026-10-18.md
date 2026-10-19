@@ -13,6 +13,12 @@ Cada IA debe trabajar únicamente en el repositorio que le corresponde. El
 contrato HTTP definitivo es el OpenAPI del backend en
 `src/main/resources/openapi/documentation.yaml`.
 
+> **Actualización del 19 de octubre:** Android completó las tareas A01–A07 en los
+> commits `30d301a` y `e103585`; su workflow está verde. Ese bloque se conserva
+> como especificación y trazabilidad, no como lista pendiente. Solo falta su
+> validación física. Web no cambió y su bloque continúa plenamente vigente. Ver
+> `docs/REESCANEO_REPOSITORIOS_2026-10-19.md`.
+
 ## Prompt para la IA responsable de Android
 
 ```text
