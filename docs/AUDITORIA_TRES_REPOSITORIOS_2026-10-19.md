@@ -391,3 +391,20 @@ pruebas unitarias y 19 integraciones PostgreSQL/PostGIS terminaron correctamente
 El detalle actualizado y la lista autocontenida para el equipo web están en
 `docs/AUDITORIA_WEB_Y_CIERRE_BACKEND_2026-10-19.md`. Esta actualización prevalece
 sobre B01–B03 y las referencias web anteriores de este documento.
+
+## Cierre publicado en `main` — 20 de octubre de 2026
+
+El cambio funcional `72701ee` dejó de ser una rama pendiente y fue preparado para
+su publicación en `main`. Incluye las correcciones B01, B02 y B03: cookie
+compatible con el WebSocket administrativo, persistencia atómica de reporte e
+imagen y cursores estables fecha+UUID. También incorpora las validaciones
+administrativas y pruebas descritas en la actualización anterior.
+
+Antes de promoverlo se repitieron las validaciones con JDK 21.0.10, Gradle 9.5.0,
+Docker Desktop y PostgreSQL/PostGIS mediante Testcontainers. Pasaron 41 pruebas
+unitarias y 19 integraciones, sin fallos, errores ni pruebas omitidas. `gradlew
+check` finalizó correctamente.
+
+La constancia de entrega y el contrato esperado para la prueba conjunta se
+encuentran en `docs/ENTREGA_BACKEND_MAIN_2026-10-20.md`. Esta sección reemplaza
+las menciones anteriores que describen B01–B03 como pendientes del backend.

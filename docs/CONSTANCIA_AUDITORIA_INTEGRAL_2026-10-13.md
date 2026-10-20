@@ -923,3 +923,24 @@ reporte cuando falla su imagen, empates de cursor, login/cookie/CSRF, WebSocket
 El diagnóstico completo y el mensaje de implementación para el equipo web se
 conservan en `docs/AUDITORIA_WEB_Y_CIERRE_BACKEND_2026-10-19.md`. Esa constancia
 es el corte vigente para web y para los hallazgos backend B01–B03.
+
+## 22. Entrega del backend en `main` — 20 de octubre de 2026
+
+Se completó la preparación del cambio funcional `72701ee` para `main`. El corte
+incluye cookie administrativa utilizable por REST y WebSocket, invalidación de
+sesiones de administradores desactivados, persistencia atómica de reporte e
+imagen, cursores fecha+UUID y validaciones reforzadas de administración.
+
+La verificación se repitió con JDK 21.0.10, Gradle Wrapper 9.5.0, Docker Desktop
+4.93.0 y PostgreSQL/PostGIS real mediante Testcontainers. Los resultados fueron
+41 pruebas unitarias y 19 integraciones correctas, cero fallos, cero errores y
+cero omitidas. La tarea `check` terminó correctamente.
+
+El backend queda listo para que el equipo descargue `main` y realice la prueba
+conjunta. Los pendientes conocidos están en los clientes y en el despliegue:
+adecuación contractual web, prueba física y protección local del token Android,
+HTTPS/WSS, secretos, backup, observabilidad y E2E de los tres componentes.
+
+La constancia específica de este corte está en
+`docs/ENTREGA_BACKEND_MAIN_2026-10-20.md` y prevalece sobre las referencias que
+todavía describan las correcciones B01–B03 como una rama pendiente.
