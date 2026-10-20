@@ -6,7 +6,8 @@ import com.mapaurbano.shared.api.CursorPage
 import com.mapaurbano.categories.domain.CategoryRepository
 import com.mapaurbano.media.domain.ImageRepository
 import com.mapaurbano.shared.domain.ValidationException
-import java.time.Instant
+import com.mapaurbano.shared.api.StableCursorCodec
+import java.util.UUID
 
 class ListUserReportsUseCase(
     private val reportRepository: ReportRepository,
@@ -16,14 +17,16 @@ class ListUserReportsUseCase(
     suspend fun execute(userId: String, cursor: String?, limit: Int = 20): CursorPage<ReportPublicSummary> {
         if (limit !in 1..100) throw ValidationException("El límite debe estar entre 1 y 100")
         cursor?.let {
-            if (runCatching { Instant.parse(it) }.isFailure) throw ValidationException("Cursor inválido")
+            if (StableCursorCodec.decode(it) == null) throw ValidationException("Cursor inválido")
         }
         val reports = reportRepository.findByUserId(userId, cursor, limit + 1)
         
         val hasNextPage = reports.size > limit
         val itemsToReturn = if (hasNextPage) reports.dropLast(1) else reports
         
-        val nextCursor = if (hasNextPage) itemsToReturn.last().createdAt.toString() else null
+        val nextCursor = if (hasNextPage) itemsToReturn.last().let {
+            StableCursorCodec.encode(it.createdAt, UUID.fromString(it.id))
+        } else null
         val categories = categoryRepository.findAll().associateBy { it.id }
         
         val items = itemsToReturn.map { report ->

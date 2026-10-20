@@ -29,6 +29,7 @@ import com.mapaurbano.infrastructure.database.repositories.AuditRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.CategoryRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.ImageRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.ReportRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.ReportSubmissionRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.SessionRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.TeamRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.UserRepositoryImpl
@@ -45,6 +46,7 @@ import com.mapaurbano.reports.application.DeleteReportUseCase
 import com.mapaurbano.reports.application.AdminReportQueryUseCase
 import com.mapaurbano.reports.domain.AdminReportQueryRepository
 import com.mapaurbano.reports.domain.ReportRepository
+import com.mapaurbano.reports.domain.ReportSubmissionRepository
 import com.mapaurbano.statistics.application.GetStatisticsUseCase
 import com.mapaurbano.statistics.domain.StatisticsRepository
 import com.mapaurbano.users.application.DeactivateUserUseCase
@@ -63,6 +65,7 @@ val repositoryModule = module {
     single<AdminUserRepository> { AdminUserRepositoryImpl() }
     single<AdminSessionRepository> { AdminSessionRepositoryImpl() }
     single<ReportRepository> { ReportRepositoryImpl() }
+    single<ReportSubmissionRepository> { ReportSubmissionRepositoryImpl() }
     single<AdminReportQueryRepository> { AdminReportQueryRepositoryImpl() }
     single<CategoryRepository> { CategoryRepositoryImpl() }
     single<TeamRepository> { TeamRepositoryImpl() }

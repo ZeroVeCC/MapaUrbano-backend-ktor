@@ -5,12 +5,17 @@ import com.mapaurbano.infrastructure.database.repositories.AdminReportQueryRepos
 import com.mapaurbano.infrastructure.database.repositories.CategoryRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.ImageRepositoryImpl
 import com.mapaurbano.infrastructure.database.repositories.StatisticsRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.ReportSubmissionRepositoryImpl
+import com.mapaurbano.infrastructure.database.repositories.AuditRepositoryImpl
+import com.mapaurbano.audit.application.ListAuditEventsUseCase
+import com.mapaurbano.media.domain.ReportImage
 import com.mapaurbano.reports.domain.AdminReportFilter
 import com.mapaurbano.users.application.GetOwnReportUseCase
 import com.mapaurbano.users.application.ListUserReportsUseCase
 import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportStatus
+import com.mapaurbano.shared.domain.PersistenceException
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
@@ -43,6 +48,8 @@ import com.mapaurbano.application.configureRouting
 import com.mapaurbano.application.configureSecurity
 import com.mapaurbano.application.repositoryModule
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.patch
@@ -51,10 +58,14 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.application.install
 import io.ktor.server.testing.testApplication
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.koin.ktor.plugin.Koin
@@ -220,6 +231,78 @@ class DatabaseMigrationsTest {
     }
 
     @Test
+    fun `report and optional image are persisted atomically`(): Unit = runBlocking {
+        val userId = user()
+        connection.commit()
+        val report = reportDomain(userId.toString())
+        val invalidImage = ReportImage(
+            id = UUID.randomUUID().toString(),
+            reportId = report.id,
+            data = byteArrayOf(0),
+            contentType = "image/png",
+            sizeBytes = 1,
+            widthPx = 1,
+            heightPx = 1,
+            originalFilename = "evidencia.png",
+            checksumSha256 = "invalid",
+            createdAt = report.createdAt,
+        )
+        Database.connect(postgres.jdbcUrl, driver = "org.postgresql.Driver", user = postgres.username, password = postgres.password)
+
+        assertFailsWith<PersistenceException> {
+            ReportSubmissionRepositoryImpl().create(report, invalidImage)
+        }
+        assertEquals("0", scalar("SELECT count(*) FROM reports WHERE id = ?", UUID.fromString(report.id)))
+
+        execute("DELETE FROM users WHERE id = ?", userId)
+        connection.commit()
+    }
+
+    @Test
+    fun `stable report and audit cursors do not skip rows with tied timestamps`(): Unit = runBlocking {
+        val userId = user()
+        val reportIds = List(3) { report(userId) }
+        val auditIds = List(3) { UUID.randomUUID() }
+        val tiedAt = Instant.parse("2100-01-01T00:00:00Z")
+        val tiedTimestamp = java.sql.Timestamp.from(tiedAt)
+        reportIds.forEach { execute("UPDATE reports SET created_at = ?, updated_at = ? WHERE id = ?", tiedTimestamp, tiedTimestamp, it) }
+        auditIds.forEach {
+            execute(
+                "INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, occurred_at) VALUES (?, ?, 'cursor.test', 'report', ?, ?)",
+                it, userId, reportIds.first(), tiedTimestamp,
+            )
+        }
+        connection.commit()
+        Database.connect(postgres.jdbcUrl, driver = "org.postgresql.Driver", user = postgres.username, password = postgres.password)
+
+        try {
+            val userReports = ListUserReportsUseCase(ReportRepositoryImpl(), CategoryRepositoryImpl(), ImageRepositoryImpl())
+            val firstUserPage = userReports.execute(userId.toString(), cursor = null, limit = 2)
+            val secondUserPage = userReports.execute(userId.toString(), cursor = assertNotNull(firstUserPage.nextCursor), limit = 2)
+            assertEquals(reportIds.map(UUID::toString).toSet(), (firstUserPage.items + secondUserPage.items).map { it.id }.toSet())
+
+            val adminReports = AdminReportQueryRepositoryImpl()
+            val firstAdminPage = adminReports.list(AdminReportFilter(limit = 2))
+            val secondAdminPage = adminReports.list(AdminReportFilter(cursor = assertNotNull(firstAdminPage.nextCursor), limit = 2))
+            assertTrue(reportIds.map(UUID::toString).toSet().all { id ->
+                (firstAdminPage.items + secondAdminPage.items).any { it.id == id }
+            })
+
+            val audit = ListAuditEventsUseCase(AuditRepositoryImpl())
+            val firstAuditPage = audit.execute(cursor = null, limit = 2)
+            val secondAuditPage = audit.execute(cursor = assertNotNull(firstAuditPage.nextCursor), limit = 2)
+            assertTrue(auditIds.map(UUID::toString).toSet().all { id ->
+                (firstAuditPage.items + secondAuditPage.items).any { it.id == id }
+            })
+        } finally {
+            execute("DELETE FROM audit_events WHERE id = ANY (?)", connection.createArrayOf("uuid", auditIds.toTypedArray()))
+            execute("DELETE FROM reports WHERE id = ANY (?)", connection.createArrayOf("uuid", reportIds.toTypedArray()))
+            execute("DELETE FROM users WHERE id = ?", userId)
+            connection.commit()
+        }
+    }
+
+    @Test
     fun `only one image per report with valid metadata and bounded size`() {
         val id = report()
         image(id)
@@ -292,16 +375,30 @@ class DatabaseMigrationsTest {
             configureSecurity()
             configureRouting()
         }
-        val browser = createClient { install(HttpCookies) }
+        val browser = createClient {
+            install(HttpCookies)
+            install(ClientWebSockets)
+        }
         try {
             val login = browser.post("/api/v1/admin/auth/login") {
                 contentType(ContentType.Application.Json)
                 setBody("""{"username":"integration-admin","password":"$password"}""")
             }
             assertEquals(HttpStatusCode.OK, login.status)
+            assertTrue(
+                login.headers.getAll(HttpHeaders.SetCookie).orEmpty()
+                    .any { it.contains("Path=/api/v1", ignoreCase = true) },
+                "La cookie administrativa debe alcanzar /api/v1/ws/admin",
+            )
             val csrf = Json.parseToJsonElement(login.bodyAsText()).jsonObject.getValue("csrfToken").jsonPrimitive.content
             assertTrue(csrf.isNotBlank())
             assertEquals(HttpStatusCode.OK, browser.get("/api/v1/admin/auth/me").status)
+            browser.webSocket("/api/v1/ws/admin") {
+                val connected = withTimeout(2_000) { incoming.receive() as Frame.Text }
+                val connectedType = Json.parseToJsonElement(connected.readText())
+                    .jsonObject.getValue("type").jsonPrimitive.content
+                assertEquals("connected", connectedType)
+            }
 
             val reports = browser.get("/api/v1/admin/reports")
             assertEquals(HttpStatusCode.OK, reports.status)
@@ -338,6 +435,18 @@ class DatabaseMigrationsTest {
                 header("X-CSRF-Token", csrf)
             }.status)
             assertEquals(HttpStatusCode.Unauthorized, browser.get("/api/v1/admin/auth/me").status)
+
+            assertEquals(HttpStatusCode.OK, browser.post("/api/v1/admin/auth/login") {
+                contentType(ContentType.Application.Json)
+                setBody("""{"username":"integration-admin","password":"$password"}""")
+            }.status)
+            execute("UPDATE admin_users SET is_active = FALSE WHERE id = ?", adminId)
+            connection.commit()
+            assertEquals(
+                HttpStatusCode.Unauthorized,
+                browser.get("/api/v1/admin/auth/me").status,
+                "Una cuenta administrativa desactivada no debe conservar acceso con una cookie previa",
+            )
         } finally {
             connection.rollback()
             execute("DELETE FROM audit_events WHERE actor_admin_user_id = ?", adminId)

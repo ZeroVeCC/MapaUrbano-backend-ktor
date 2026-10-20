@@ -19,6 +19,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.doubleParam
 import org.jetbrains.exposed.sql.insert
@@ -42,14 +43,17 @@ class ReportRepositoryImpl : ReportRepository {
             (ReportsTable.userId eq userUuid) and (ReportsTable.deletedAt.isNull())
         }
 
-        if (cursor != null) {
-            val cursorInstant = try { Instant.parse(cursor) } catch (_: Exception) { null }
-            if (cursorInstant != null) {
-                query.andWhere { ReportsTable.createdAt less cursorInstant }
+        val decodedCursor = cursor?.let(com.mapaurbano.shared.api.StableCursorCodec::decode)
+        if (decodedCursor != null) {
+            query.andWhere {
+                val older = ReportsTable.createdAt less decodedCursor.timestamp
+                val id = decodedCursor.id
+                if (id == null) older
+                else older or ((ReportsTable.createdAt eq decodedCursor.timestamp) and (ReportsTable.id less id))
             }
         }
 
-        query.orderBy(ReportsTable.createdAt to SortOrder.DESC)
+        query.orderBy(ReportsTable.createdAt to SortOrder.DESC, ReportsTable.id to SortOrder.DESC)
             .limit(limit)
             .map { it.toReport() }
     }
@@ -98,23 +102,7 @@ class ReportRepositoryImpl : ReportRepository {
 
     override suspend fun create(report: Report): Report = try {
         newSuspendedTransaction(Dispatchers.IO) {
-            ReportsTable.insert {
-                it[id] = UUID.fromString(report.id)
-                it[categoryId] = UUID.fromString(report.categoryId)
-                it[userId] = report.userId?.let { uid -> UUID.fromString(uid) }
-                it[status] = report.status
-                it[priority] = report.priority
-                it[title] = report.title
-                it[description] = report.description
-                it[location] = GeoPoint(latitude = report.latitude, longitude = report.longitude)
-                it[dueAt] = report.dueAt
-                it[trackingCodeHash] = report.trackingCodeHash
-                it[trackingCodeHint] = report.trackingCodeHint
-                it[version] = report.version
-                it[createdAt] = report.createdAt
-                it[updatedAt] = report.updatedAt
-            }
-            report
+            insertReport(report)
         }
     } catch (cause: ExposedSQLException) {
         throw PersistenceException(
@@ -203,6 +191,26 @@ class ReportRepositoryImpl : ReportRepository {
             updatedAt = this[ReportsTable.updatedAt]
         )
     }
+}
+
+internal fun insertReport(report: Report): Report {
+    ReportsTable.insert {
+        it[id] = UUID.fromString(report.id)
+        it[categoryId] = UUID.fromString(report.categoryId)
+        it[userId] = report.userId?.let { uid -> UUID.fromString(uid) }
+        it[status] = report.status
+        it[priority] = report.priority
+        it[title] = report.title
+        it[description] = report.description
+        it[location] = GeoPoint(latitude = report.latitude, longitude = report.longitude)
+        it[dueAt] = report.dueAt
+        it[trackingCodeHash] = report.trackingCodeHash
+        it[trackingCodeHint] = report.trackingCodeHint
+        it[version] = report.version
+        it[createdAt] = report.createdAt
+        it[updatedAt] = report.updatedAt
+    }
+    return report
 }
 
 internal fun coversEntireWorld(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double): Boolean =

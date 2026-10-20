@@ -4,6 +4,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.sessions.*
 import com.mapaurbano.auth.application.AuthenticateUserUseCase
+import com.mapaurbano.auth.domain.AdminUserRepository
 import com.mapaurbano.shared.api.respondApiError
 import io.ktor.http.HttpStatusCode
 import org.koin.ktor.ext.inject
@@ -15,6 +16,7 @@ import kotlinx.serialization.Serializable
 fun Application.configureSecurity() {
     val authenticateUser by inject<AuthenticateUserUseCase>()
     val adminSessionRepository by inject<AdminSessionRepository>()
+    val adminUserRepository by inject<AdminUserRepository>()
     install(Authentication) {
         bearer("user-bearer") {
             realm = "Access to user API"
@@ -26,6 +28,8 @@ fun Application.configureSecurity() {
         session<AdminSessionCookie>("admin-session") {
             validate { cookie ->
                 adminSessionRepository.findById(cookie.id)?.let { session ->
+                    val admin = adminUserRepository.findById(session.adminUserId)
+                    if (admin?.isActive != true) return@validate null
                     AdminPrincipal(
                         sessionId = session.id,
                         adminUserId = session.adminUserId,

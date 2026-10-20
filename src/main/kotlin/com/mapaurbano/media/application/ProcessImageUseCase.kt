@@ -20,6 +20,16 @@ class ProcessImageUseCase(
         contentType: String,
         originalFilename: String?
     ): ReportImage {
+        val reportImage = prepare(reportId, data, contentType, originalFilename)
+        return imageRepository.create(reportImage)
+    }
+
+    fun prepare(
+        reportId: String,
+        data: ByteArray,
+        contentType: String,
+        originalFilename: String?,
+    ): ReportImage {
         val metadata = inspect(data, contentType)
 
         val digest = MessageDigest.getInstance("SHA-256")
@@ -38,7 +48,7 @@ class ProcessImageUseCase(
             createdAt = Instant.now()
         )
 
-        return imageRepository.create(reportImage)
+        return reportImage
     }
 
     fun inspect(data: ByteArray, contentType: String): ImageMetadata {

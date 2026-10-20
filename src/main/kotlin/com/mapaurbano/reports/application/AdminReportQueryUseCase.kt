@@ -1,6 +1,6 @@
 package com.mapaurbano.reports.application
 
-import java.time.Instant
+import java.util.UUID
 
 import com.mapaurbano.reports.domain.AdminReportFilter
 import com.mapaurbano.reports.domain.AdminReportQueryRepository
@@ -11,6 +11,7 @@ import com.mapaurbano.reports.dto.ReportAdminSummary
 import com.mapaurbano.shared.api.CursorPage
 import com.mapaurbano.shared.domain.NotFoundException
 import com.mapaurbano.shared.domain.ValidationException
+import com.mapaurbano.shared.api.StableCursorCodec
 
 class AdminReportQueryUseCase(private val repository: AdminReportQueryRepository) {
     suspend fun list(
@@ -19,8 +20,10 @@ class AdminReportQueryUseCase(private val repository: AdminReportQueryRepository
     ): CursorPage<ReportAdminSummary> {
         if (limit !in 1..100) throw ValidationException("El límite debe estar entre 1 y 100.")
         cursor?.let {
-            if (runCatching { Instant.parse(it) }.isFailure) throw ValidationException("Cursor inválido.")
+            if (StableCursorCodec.decode(it) == null) throw ValidationException("Cursor inválido.")
         }
+        validateOptionalUuid(teamId, "teamId")
+        validateOptionalUuid(responsibleAdminUserId, "responsibleAdminUserId")
         val parsedStatus = status?.let {
             runCatching { ReportStatus.valueOf(it.uppercase()) }
                 .getOrElse { throw ValidationException("Estado inválido.") }
@@ -36,4 +39,11 @@ class AdminReportQueryUseCase(private val repository: AdminReportQueryRepository
 
     suspend fun detail(id: String): ReportAdminDetail = repository.findDetail(id)
         ?: throw NotFoundException("Reporte no encontrado.")
+
+    private fun validateOptionalUuid(value: String?, field: String) {
+        value ?: return
+        if (runCatching { UUID.fromString(value) }.isFailure) {
+            throw ValidationException("$field debe ser un UUID válido.")
+        }
+    }
 }

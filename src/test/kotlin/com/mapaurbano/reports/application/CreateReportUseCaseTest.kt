@@ -5,6 +5,10 @@ import com.mapaurbano.categories.domain.CategoryRepository
 import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
 import com.mapaurbano.reports.domain.ReportRepository
+import com.mapaurbano.reports.domain.ReportSubmissionRepository
+import com.mapaurbano.media.application.ProcessImageUseCase
+import com.mapaurbano.media.domain.ImageRepository
+import com.mapaurbano.media.domain.ReportImage
 import com.mapaurbano.reports.domain.ReportStatus
 import com.mapaurbano.reports.domain.SubmissionMode
 import com.mapaurbano.shared.domain.ValidationException
@@ -35,6 +39,21 @@ class CreateReportUseCaseTest {
         override suspend fun softDelete(id: String): Boolean = true
     }
 
+    class FakeSubmissionRepository(private val reports: MutableList<Report>) : ReportSubmissionRepository {
+        var image: ReportImage? = null
+        override suspend fun create(report: Report, image: ReportImage?): Report {
+            reports.add(report)
+            this.image = image
+            return report
+        }
+    }
+
+    class FakeImageRepository : ImageRepository {
+        override suspend fun findByReportId(reportId: String): ReportImage? = null
+        override suspend fun create(image: ReportImage): ReportImage = image
+        override suspend fun deleteByReportId(reportId: String): Boolean = false
+    }
+
     class FakeCategoryRepository : CategoryRepository {
         override suspend fun findById(id: String): Category? = Category("cat-1", "bach", "Baches", "#FFF", true, 1, Instant.now())
         override suspend fun findBySlug(slug: String): Category? = Category("cat-1", "bach", "Baches", "#FFF", true, 1, Instant.now())
@@ -44,8 +63,14 @@ class CreateReportUseCaseTest {
     }
 
     private val reportRepository = FakeReportRepository()
+    private val submissionRepository = FakeSubmissionRepository(reportRepository.reports)
     private val categoryRepository = FakeCategoryRepository()
-    private val useCase = CreateReportUseCase(reportRepository, categoryRepository, EventBus())
+    private val useCase = CreateReportUseCase(
+        submissionRepository,
+        categoryRepository,
+        ProcessImageUseCase(FakeImageRepository()),
+        EventBus(),
+    )
 
     @Test
     fun `modo cuenta sin sesion deberia fallar`(): Unit = runBlocking {

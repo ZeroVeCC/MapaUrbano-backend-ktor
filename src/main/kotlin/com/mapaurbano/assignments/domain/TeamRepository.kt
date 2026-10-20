@@ -3,6 +3,7 @@ package com.mapaurbano.assignments.domain
 interface TeamRepository {
     suspend fun findAll(): List<Team>
     suspend fun findById(id: String): Team?
+    suspend fun findByName(name: String): Team?
     suspend fun create(team: Team): Team
     suspend fun update(team: Team): Boolean
     

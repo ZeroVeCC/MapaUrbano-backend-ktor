@@ -4,6 +4,7 @@ import com.mapaurbano.application.*
 import com.mapaurbano.auth.application.*
 import com.mapaurbano.auth.dto.LoginRequest
 import com.mapaurbano.reports.domain.ReportRepository
+import com.mapaurbano.reports.domain.ReportSubmissionRepository
 import com.mapaurbano.reports.application.CreateReportUseCaseTest
 import com.mapaurbano.categories.domain.CategoryRepository
 import io.ktor.client.request.forms.*
@@ -114,6 +115,7 @@ class UserAuthenticationTest {
                     single<UserRepository> { users }
                     single<SessionRepository> { sessions }
                     single<ReportRepository> { reports }
+                    single<ReportSubmissionRepository> { CreateReportUseCaseTest.FakeSubmissionRepository(reports.reports) }
                     single<CategoryRepository> { CreateReportUseCaseTest.FakeCategoryRepository() }
                 })
             }

@@ -900,3 +900,26 @@ handshake.
 El informe completo, la matriz operación por operación y el plan priorizado se
 conservan en `docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md`. Esta sección y ese
 documento son el estado vigente cuando contradigan cortes anteriores.
+
+## 21. Auditoría web actualizada y cierre de pendientes backend — 19 de octubre de 2026
+
+Se volvió a revisar web `main` en `4101b24`. El delta posterior a `fced3ea` es
+principalmente visual y no resuelve los desacoples de contrato. Con Node 24 las 8
+pruebas y el build de producción pasan; GitHub Actions `39334403684` falla porque
+el workflow continúa en Node 20, incompatible con el lock de Angular 22.
+
+En backend se preparó la rama `codex/auditoria-web-ajustes-backend`, basada en
+`main` `49e3a52`, sin modificar los repositorios de los compañeros. Corrige el
+Path de la cookie y prueba el WebSocket administrativo, invalida sesiones de
+administradores desactivados, guarda reporte e imagen en una sola transacción,
+implementa cursores estables por fecha+UUID y endurece validaciones de filtros,
+equipos, miembros y categorías. OpenAPI quedó alineado con esos errores y límites.
+
+La validación final local terminó con 41 pruebas unitarias y 19 integraciones
+reales sobre PostgreSQL/PostGIS, todas correctas. La integración cubre rollback de
+reporte cuando falla su imagen, empates de cursor, login/cookie/CSRF, WebSocket
+101, mutaciones, conflicto 409, logout y cuenta administrativa desactivada.
+
+El diagnóstico completo y el mensaje de implementación para el equipo web se
+conservan en `docs/AUDITORIA_WEB_Y_CIERRE_BACKEND_2026-10-19.md`. Esa constancia
+es el corte vigente para web y para los hallazgos backend B01–B03.

@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.time.Instant
 import java.util.UUID
+import com.mapaurbano.shared.api.StableCursorCodec
 
 class AdminReportQueryRepositoryImpl : AdminReportQueryRepository {
     override suspend fun list(filter: AdminReportFilter): CursorPage<ReportAdminSummary> =
@@ -49,11 +50,15 @@ class AdminReportQueryRepositoryImpl : AdminReportQueryRepository {
             val totalCount = ReportsTable.selectAll().where { condition }.count()
             var pageCondition = condition
             filter.cursor?.let { raw ->
-                val cursor = runCatching { Instant.parse(raw) }.getOrNull()
-                if (cursor != null) pageCondition = pageCondition and (ReportsTable.createdAt less cursor)
+                StableCursorCodec.decode(raw)?.let { cursor ->
+                    val older = ReportsTable.createdAt less cursor.timestamp
+                    pageCondition = pageCondition and if (cursor.id == null) older else {
+                        older or ((ReportsTable.createdAt eq cursor.timestamp) and (ReportsTable.id less cursor.id))
+                    }
+                }
             }
             val rows = ReportsTable.selectAll().where { pageCondition }
-                .orderBy(ReportsTable.createdAt to SortOrder.DESC)
+                .orderBy(ReportsTable.createdAt to SortOrder.DESC, ReportsTable.id to SortOrder.DESC)
                 .limit(filter.limit + 1).toList()
             val hasNext = rows.size > filter.limit
             val pageRows = if (hasNext) rows.dropLast(1) else rows
@@ -89,7 +94,9 @@ class AdminReportQueryRepositoryImpl : AdminReportQueryRepository {
                         updatedAt = row[ReportsTable.updatedAt].toString(),
                     )
                 },
-                nextCursor = if (hasNext) pageRows.lastOrNull()?.get(ReportsTable.createdAt)?.toString() else null,
+                nextCursor = if (hasNext) pageRows.lastOrNull()?.let {
+                    StableCursorCodec.encode(it[ReportsTable.createdAt], it[ReportsTable.id].value)
+                } else null,
                 totalCount = totalCount,
             )
         }

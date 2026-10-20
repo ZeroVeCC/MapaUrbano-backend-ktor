@@ -19,19 +19,7 @@ class ImageRepositoryImpl : ImageRepository {
     }
 
     override suspend fun create(image: ReportImage): ReportImage = newSuspendedTransaction(Dispatchers.IO) {
-        ReportImagesTable.insert {
-            it[id] = UUID.fromString(image.id)
-            it[reportId] = UUID.fromString(image.reportId)
-            it[data] = image.data
-            it[contentType] = image.contentType
-            it[sizeBytes] = image.sizeBytes
-            it[widthPx] = image.widthPx
-            it[heightPx] = image.heightPx
-            it[originalFilename] = image.originalFilename
-            it[checksumSha256] = image.checksumSha256
-            it[createdAt] = image.createdAt
-        }
-        image
+        insertReportImage(image)
     }
 
     override suspend fun deleteByReportId(reportId: String): Boolean = newSuspendedTransaction(Dispatchers.IO) {
@@ -52,4 +40,20 @@ class ImageRepositoryImpl : ImageRepository {
         checksumSha256 = this[ReportImagesTable.checksumSha256],
         createdAt = this[ReportImagesTable.createdAt]
     )
+}
+
+internal fun insertReportImage(image: ReportImage): ReportImage {
+    ReportImagesTable.insert {
+        it[id] = UUID.fromString(image.id)
+        it[reportId] = UUID.fromString(image.reportId)
+        it[data] = image.data
+        it[contentType] = image.contentType
+        it[sizeBytes] = image.sizeBytes
+        it[widthPx] = image.widthPx
+        it[heightPx] = image.heightPx
+        it[originalFilename] = image.originalFilename
+        it[checksumSha256] = image.checksumSha256
+        it[createdAt] = image.createdAt
+    }
+    return image
 }

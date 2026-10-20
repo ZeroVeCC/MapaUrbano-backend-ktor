@@ -5,6 +5,7 @@ import com.mapaurbano.assignments.domain.TeamRepository
 import com.mapaurbano.assignments.dto.CreateTeamRequest
 import com.mapaurbano.assignments.dto.TeamSummary
 import com.mapaurbano.shared.domain.ValidationException
+import com.mapaurbano.shared.domain.ConflictException
 import java.time.Instant
 import java.util.UUID
 
@@ -15,6 +16,12 @@ class CreateTeamUseCase(
         val name = request.name.trim()
         if (name.isBlank()) {
             throw ValidationException(message = "El nombre del equipo es obligatorio")
+        }
+        if (name.length > 120) {
+            throw ValidationException(message = "El nombre del equipo no puede superar 120 caracteres")
+        }
+        if (teamRepository.findByName(name) != null) {
+            throw ConflictException("Ya existe un equipo con ese nombre")
         }
 
         val now = Instant.now()
