@@ -18,7 +18,7 @@ Este modelo resume relaciones del dominio y **no sustituye** el diagrama físico
 erDiagram
     USUARIO ||--o{ REPORTE : crea
     CATEGORIA ||--o{ REPORTE : clasifica
-    REPORTE ||--o{ IMAGEN : adjunta
+    REPORTE ||--o| IMAGEN : adjunta
     REPORTE ||--o{ ASIGNACION : recibe
     EQUIPO ||--o{ ASIGNACION : atiende
     REPORTE ||--o{ HISTORIAL : registra

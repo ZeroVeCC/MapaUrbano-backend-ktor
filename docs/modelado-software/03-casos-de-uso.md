@@ -20,8 +20,18 @@
 
 ## CU-02: Crear reporte — descripción
 
-**Precondición:** el ciudadano tiene una sesión Bearer válida. **Entrada:** título, descripción, categoría, latitud, longitud y foto opcional. **Flujo principal:** Android envía el formulario; el backend identifica al usuario, valida datos y ejecuta la creación; si hay imagen, la procesa; devuelve una respuesta de creación. **Alternativas:** sesión ausente o inválida, coordenadas incorrectas, datos insuficientes o imagen rechazada. **Resultado:** reporte persistido si la operación concluye correctamente.
+**Precondición:** el ciudadano tiene una sesión Bearer válida. **Entrada:**
+título, descripción, categoría, latitud, longitud y foto opcional. **Flujo
+principal:** Android envía el formulario; el backend identifica al usuario,
+valida los datos, prepara la imagen y guarda reporte e imagen en una transacción;
+después del commit publica el evento y responde 201. **Alternativas:** sesión
+ausente o inválida, coordenadas incorrectas, datos insuficientes, imagen rechazada
+o fallo controlado de persistencia. **Resultado:** reporte e imagen se confirman
+juntos o se revierten juntos.
 
-**Precisión:** este es el flujo pretendido a partir de las rutas. La consistencia entre creación de reporte e imagen ante fallos intermedios debe validarse por separado; no se afirma atomicidad de ambas operaciones.
+**Evidencia:** `ReportSubmissionRepositoryImpl` ejecuta ambas inserciones dentro
+de la misma `newSuspendedTransaction`. La integración PostgreSQL/PostGIS del 20 de
+octubre reproduce un fallo de imagen y comprueba que el reporte también se
+revierte.
 
 [Volver al índice](README.md)

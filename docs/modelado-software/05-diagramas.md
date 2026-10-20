@@ -36,17 +36,26 @@ sequenceDiagram
   participant Android
   participant API as Ktor / Ruta
   participant Caso as CreateReportUseCase
+  participant Imagen as ProcessImageUseCase
+  participant Repo as ReportSubmissionRepository
   participant DB as PostgreSQL
   Vecino->>Android: Completa formulario
   Android->>API: POST /api/v1/reports + Bearer
-  API->>API: Valida identidad y campos
-  API->>Caso: execute(...)
-  Caso->>DB: Persiste reporte mediante repositorio
-  DB-->>Caso: Resultado
+  API->>API: Valida identidad Bearer y multipart
+  API->>Caso: execute(campos, imagen)
+  Caso->>Imagen: Prepara y valida evidencia opcional
+  Imagen-->>Caso: ReportImage o sin imagen
+  Caso->>Repo: create(reporte, imagen)
+  Repo->>DB: INSERT reporte + imagen en una transacción
+  DB-->>Repo: Commit
+  Repo-->>Caso: Reporte creado
+  Caso->>Caso: Publica report.created
   Caso-->>API: Reporte creado
   API-->>Android: 201 Created
 ```
 
-El tratamiento opcional de imágenes está omitido aquí para mantener legible el flujo principal; ver `reports/api/PublicReportRoutes.kt` y `media/`.
+Si una inserción falla, PostgreSQL revierte la transacción completa y el evento no
+se publica. Ver `reports/api/PublicReportRoutes.kt`, `CreateReportUseCase` y
+`ReportSubmissionRepositoryImpl`.
 
 [Volver al índice](README.md)

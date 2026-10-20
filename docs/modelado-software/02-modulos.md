@@ -20,7 +20,11 @@ La organización de paquetes en `src/main/kotlin/com/mapaurbano/` permite separa
 
 ## Ejemplo de responsabilidad
 
-Al crear un reporte, la ruta `reports/api/PublicReportRoutes.kt` recibe un formulario multipart, comprueba la identidad y los campos, llama a `CreateReportUseCase` y, si se adjuntó una imagen, a `ProcessImageUseCase`. La lógica se reparte entre archivos en vez de concentrarse en una pantalla o una sola función.
+Al crear un reporte, la ruta `reports/api/PublicReportRoutes.kt` recibe el
+formulario multipart, obtiene la identidad Bearer y entrega los campos a
+`CreateReportUseCase`. El caso de uso valida las reglas, prepara la imagen con
+`ProcessImageUseCase` y usa `ReportSubmissionRepository` para insertar reporte e
+imagen en una sola transacción. El evento se publica después del commit.
 
 ## Rutas y autorización
 

@@ -926,9 +926,10 @@ es el corte vigente para web y para los hallazgos backend B01–B03.
 
 ## 22. Entrega del backend en `main` — 20 de octubre de 2026
 
-Se completó la preparación del cambio funcional `72701ee` para `main`. El corte
-incluye cookie administrativa utilizable por REST y WebSocket, invalidación de
-sesiones de administradores desactivados, persistencia atómica de reporte e
+El cambio preparado originalmente como `72701ee` quedó integrado en la historia
+final de `main` como `ac59243`, después del aporte documental `b0478e4` de Mauro.
+El corte incluye cookie administrativa utilizable por REST y WebSocket,
+invalidación de sesiones de administradores desactivados, persistencia atómica de reporte e
 imagen, cursores fecha+UUID y validaciones reforzadas de administración.
 
 La verificación se repitió con JDK 21.0.10, Gradle Wrapper 9.5.0, Docker Desktop

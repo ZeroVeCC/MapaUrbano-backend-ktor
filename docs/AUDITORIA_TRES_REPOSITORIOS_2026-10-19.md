@@ -394,8 +394,9 @@ sobre B01–B03 y las referencias web anteriores de este documento.
 
 ## Cierre publicado en `main` — 20 de octubre de 2026
 
-El cambio funcional `72701ee` dejó de ser una rama pendiente y fue preparado para
-su publicación en `main`. Incluye las correcciones B01, B02 y B03: cookie
+El cambio funcional preparado como `72701ee` quedó integrado en la historia final
+de `main` como `ac59243`, después de conservar el aporte documental `b0478e4` de
+Mauro. Incluye las correcciones B01, B02 y B03: cookie
 compatible con el WebSocket administrativo, persistencia atómica de reporte e
 imagen y cursores estables fecha+UUID. También incorpora las validaciones
 administrativas y pruebas descritas en la actualización anterior.

@@ -4,6 +4,11 @@
 
 > Esta documentación describe el código disponible y modelos conceptuales simplificados. No certifica despliegue ni pruebas ejecutadas por el autor de estos documentos. No reemplaza la documentación técnica preexistente.
 
+**Actualización del equipo — 20/10/2026:** el modelado fue contrastado con el
+cierre funcional integrado después del ZIP. La atomicidad reporte-imagen, la
+cookie del WebSocket administrativo y los resultados de pruebas se actualizaron
+con la evidencia de `docs/ENTREGA_BACKEND_MAIN_2026-10-20.md`.
+
 ## Índice
 
 1. [Arquitectura del sistema](01-arquitectura.md)

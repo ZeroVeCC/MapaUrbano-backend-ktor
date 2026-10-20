@@ -7,9 +7,10 @@ Mapa Urbano con Android y el panel web. Solamente se modificó el repositorio
 `ZeroVeCC/MapaUrbano-backend-ktor`; Android y web permanecen bajo responsabilidad
 de sus respectivos equipos.
 
-La base de la entrega es el cambio funcional `72701ee`, construido sobre
-`main` `49e3a52`. El commit que contiene este documento completa la promoción y
-documentación de ese trabajo en `main`.
+La corrección funcional se preparó originalmente como `72701ee` sobre
+`main` `49e3a52`. Durante la publicación se conservó primero el aporte documental
+de Mauro `b0478e4`; por eso el mismo cambio funcional quedó integrado en la
+historia final como `ac59243`.
 
 ## Funcionalidad backend incluida
 
