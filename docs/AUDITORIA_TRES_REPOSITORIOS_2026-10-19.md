@@ -21,9 +21,9 @@ se descargaron en copias temporales y se trataron como fuentes de solo lectura.
 
 | Componente | Rama | Revisión auditada | Cambio desde el corte anterior |
 |---|---|---|---|
-| Backend Ktor | `main` | `a9e418d6dea605a801f474a014ed8f3b8da3433a` | sin código nuevo; solo constancia anterior |
+| Backend Ktor | `main` | `49e3a52fbb76ffe4ba443557d1d03baee8f87691` | documentación de continuidad posterior al corte anterior |
 | Android | `main` | `e1035852acfe98c46a629440eccc06d927fd7967` | sin cambios |
-| Web Angular | `main` | `fced3eaaa20edde4296a376ec2ec98384cb60b29` | 3 commits nuevos desde `85832a4` |
+| Web Angular | `main` | `4101b24f0c1754fe94f3c3bea6f3373b3eb39699` | 3 commits posteriores a `fced3ea`, principalmente visuales y README |
 
 No hay pull requests ni issues abiertos en ninguno de los tres repositorios. Las
 ramas adicionales de backend y Android son ramas anteriores; `main` es la fuente
@@ -373,3 +373,21 @@ física. La administración del backend está implementada, pero su WebSocket ti
 un defecto de alcance de cookie. Web mejoró autenticación y lecturas básicas, pero
 todavía necesita una corrección estructural de DTO y operaciones antes de poder
 validar el sistema completo.
+
+## Actualización posterior del mismo día
+
+La auditoría web se repitió sobre `4101b24`. Los cambios nuevos ajustan el
+dashboard y declaran integración completa en README, pero no corrigen los
+contratos pendientes. Pruebas y build pasan localmente con Node 24; GitHub Actions
+`39334403684` sigue rojo porque el workflow usa Node 20.
+
+Los hallazgos backend B01, B02 y B03 se corrigieron en la rama pendiente
+`codex/auditoria-web-ajustes-backend`: cookie compatible con WebSocket y prueba de
+handshake, reporte e imagen en una transacción, y cursores fecha+UUID para reporte
+propio, reporte administrativo y auditoría. También se endurecieron sesiones de
+administradores desactivados, equipos, miembros, categorías y filtros. Las 41
+pruebas unitarias y 19 integraciones PostgreSQL/PostGIS terminaron correctamente.
+
+El detalle actualizado y la lista autocontenida para el equipo web están en
+`docs/AUDITORIA_WEB_Y_CIERRE_BACKEND_2026-10-19.md`. Esta actualización prevalece
+sobre B01–B03 y las referencias web anteriores de este documento.

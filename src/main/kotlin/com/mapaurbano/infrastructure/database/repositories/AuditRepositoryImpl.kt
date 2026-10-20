@@ -9,9 +9,13 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.util.UUID
+import com.mapaurbano.shared.api.StableCursorCodec
 
 class AuditRepositoryImpl : AuditRepository {
     override suspend fun create(event: AuditEvent): AuditEvent = newSuspendedTransaction(Dispatchers.IO) {
@@ -32,12 +36,16 @@ class AuditRepositoryImpl : AuditRepository {
     override suspend fun findAll(cursor: String?, limit: Int): List<AuditEvent> = newSuspendedTransaction(Dispatchers.IO) {
         val query = AuditEventsTable.selectAll()
         cursor?.let { raw ->
-            runCatching { java.time.Instant.parse(raw) }.getOrNull()?.let { instant ->
-                query.andWhere { AuditEventsTable.occurredAt less instant }
+            StableCursorCodec.decode(raw)?.let { cursor ->
+                query.andWhere {
+                    val older = AuditEventsTable.occurredAt less cursor.timestamp
+                    if (cursor.id == null) older
+                    else older or ((AuditEventsTable.occurredAt eq cursor.timestamp) and (AuditEventsTable.id less cursor.id))
+                }
             }
         }
         query
-            .orderBy(AuditEventsTable.occurredAt to SortOrder.DESC)
+            .orderBy(AuditEventsTable.occurredAt to SortOrder.DESC, AuditEventsTable.id to SortOrder.DESC)
             .limit(limit)
             .map { it.toAuditEvent() }
     }

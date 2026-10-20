@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
@@ -25,6 +26,10 @@ class TeamRepositoryImpl : TeamRepository {
     override suspend fun findById(id: String): Team? = newSuspendedTransaction(Dispatchers.IO) {
         val uuid = try { UUID.fromString(id) } catch (_: Exception) { return@newSuspendedTransaction null }
         TeamsTable.selectAll().where { TeamsTable.id eq uuid }.singleOrNull()?.toTeam()
+    }
+
+    override suspend fun findByName(name: String): Team? = newSuspendedTransaction(Dispatchers.IO) {
+        TeamsTable.selectAll().where { TeamsTable.name eq name }.singleOrNull()?.toTeam()
     }
 
     override suspend fun create(team: Team): Team = newSuspendedTransaction(Dispatchers.IO) {
@@ -54,16 +59,12 @@ class TeamRepositoryImpl : TeamRepository {
         val teamUuid = try { UUID.fromString(teamId) } catch (_: Exception) { return@newSuspendedTransaction false }
         val userUuid = try { UUID.fromString(adminUserId) } catch (_: Exception) { return@newSuspendedTransaction false }
 
-        try {
-            TeamMembersTable.insert {
-                it[TeamMembersTable.teamId] = teamUuid
-                it[TeamMembersTable.adminUserId] = userUuid
-                it[joinedAt] = Instant.now()
-            }
-            true
-        } catch (_: Exception) {
-            false
+        TeamMembersTable.insertIgnore {
+            it[TeamMembersTable.teamId] = teamUuid
+            it[TeamMembersTable.adminUserId] = userUuid
+            it[joinedAt] = Instant.now()
         }
+        true
     }
 
     override suspend fun removeMember(teamId: String, adminUserId: String): Boolean = newSuspendedTransaction(Dispatchers.IO) {

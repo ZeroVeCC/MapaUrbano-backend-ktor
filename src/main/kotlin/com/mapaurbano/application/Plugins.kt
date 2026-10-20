@@ -51,7 +51,10 @@ fun Application.configurePlugins() {
 
     install(Sessions) {
         cookie<AdminSessionCookie>(ADMIN_SESSION_COOKIE) {
-            cookie.path = "/api/v1/admin"
+            // La misma sesión protege REST (/admin/**) y el handshake WebSocket
+            // (/ws/admin). Un path más estrecho impide que el navegador envíe la
+            // cookie al WebSocket aunque el login haya sido correcto.
+            cookie.path = "/api/v1"
             cookie.httpOnly = true
             cookie.secure = secureCookie
             cookie.extensions["SameSite"] = "Lax"

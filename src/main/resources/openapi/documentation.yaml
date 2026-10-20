@@ -469,6 +469,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportAdminPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/v1/admin/reports/{id}:
@@ -949,6 +951,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 components:
@@ -962,7 +966,7 @@ components:
       type: apiKey
       in: cookie
       name: mapa_urbano_admin
-      description: Cookie HttpOnly emitida por el login administrativo.
+      description: Cookie HttpOnly emitida por el login administrativo con Path=/api/v1 para proteger REST y el WebSocket administrativo.
   parameters:
     ReportId:
       name: id
@@ -1199,10 +1203,12 @@ components:
           format: uuid
         slug:
           type: string
+          maxLength: 50
           pattern: '^[a-z0-9-]+$'
           example: bache
         name:
           type: string
+          maxLength: 80
           example: Bache
         colorHex:
           type: string
@@ -1220,9 +1226,12 @@ components:
       properties:
         slug:
           type: string
+          maxLength: 50
           pattern: '^[a-z0-9-]+$'
         name:
           type: string
+          minLength: 1
+          maxLength: 80
         colorHex:
           type: string
           pattern: '^#[0-9A-Fa-f]{6}$'
@@ -1236,6 +1245,8 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 80
           nullable: true
         colorHex:
           type: string
@@ -1668,13 +1679,13 @@ components:
       additionalProperties: false
       required: [name]
       properties:
-        name: {type: string, minLength: 1}
+        name: {type: string, minLength: 1, maxLength: 120}
         description: {type: string, nullable: true}
     UpdateTeamRequest:
       type: object
       additionalProperties: false
       properties:
-        name: {type: string, nullable: true}
+        name: {type: string, minLength: 1, maxLength: 120, nullable: true}
         description: {type: string, nullable: true}
         isActive: {type: boolean, nullable: true}
     Assignee:

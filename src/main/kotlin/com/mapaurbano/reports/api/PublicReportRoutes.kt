@@ -20,8 +20,6 @@ import kotlinx.io.readByteArray
 
 fun Route.authenticatedReportRoutes() {
     val createReportUseCase by inject<CreateReportUseCase>()
-    val processImageUseCase by inject<ProcessImageUseCase>()
-
     route("/reports") {
         post {
             var title = ""
@@ -71,21 +69,18 @@ fun Route.authenticatedReportRoutes() {
                 ?: return@post call.respond(HttpStatusCode.Unauthorized)
             val validLatitude = lat ?: throw ValidationException("Latitud obligatoria")
             val validLongitude = lng ?: throw ValidationException("Longitud obligatoria")
-            if (imageBytes != null && imageContentType != null) {
-                processImageUseCase.inspect(requireNotNull(imageBytes), requireNotNull(imageContentType))
-            }
             val response = createReportUseCase.execute(
-                title, description, categorySlug, validLatitude, validLongitude, mode, userId
+                title = title,
+                description = description,
+                categorySlug = categorySlug,
+                latitude = validLatitude,
+                longitude = validLongitude,
+                submissionMode = mode,
+                userId = userId,
+                imageData = imageBytes,
+                imageContentType = imageContentType,
+                imageOriginalFilename = imageFileName,
             )
-
-            if (imageBytes != null && imageContentType != null) {
-                processImageUseCase.execute(
-                    reportId = response.id,
-                    data = requireNotNull(imageBytes),
-                    contentType = requireNotNull(imageContentType),
-                    originalFilename = imageFileName
-                )
-            }
             call.respond(HttpStatusCode.Created, response)
         }
 

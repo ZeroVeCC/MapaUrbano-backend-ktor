@@ -3,10 +3,11 @@
 import com.mapaurbano.categories.domain.CategoryRepository
 import com.mapaurbano.reports.domain.Report
 import com.mapaurbano.reports.domain.ReportPriority
-import com.mapaurbano.reports.domain.ReportRepository
+import com.mapaurbano.reports.domain.ReportSubmissionRepository
 import com.mapaurbano.reports.domain.ReportStatus
 import com.mapaurbano.reports.domain.SubmissionMode
 import com.mapaurbano.reports.dto.CreateReportResponse
+import com.mapaurbano.media.application.ProcessImageUseCase
 import com.mapaurbano.shared.domain.FieldError
 import com.mapaurbano.shared.domain.ValidationException
 import java.time.Instant
@@ -17,8 +18,9 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 class CreateReportUseCase(
-    private val reportRepository: ReportRepository,
+    private val submissionRepository: ReportSubmissionRepository,
     private val categoryRepository: CategoryRepository,
+    private val processImageUseCase: ProcessImageUseCase,
     private val eventBus: EventBus,
 ) {
     suspend fun execute(
@@ -29,6 +31,9 @@ class CreateReportUseCase(
         longitude: Double,
         submissionMode: SubmissionMode,
         userId: String?,
+        imageData: ByteArray? = null,
+        imageContentType: String? = null,
+        imageOriginalFilename: String? = null,
     ): CreateReportResponse {
         val errors = mutableListOf<FieldError>()
         
@@ -70,7 +75,13 @@ class CreateReportUseCase(
             updatedAt = now
         )
 
-        val createdReport = reportRepository.create(report)
+        if ((imageData == null) != (imageContentType == null)) {
+            throw ValidationException("La imagen requiere contenido y Content-Type")
+        }
+        val image = if (imageData != null && imageContentType != null) {
+            processImageUseCase.prepare(report.id, imageData, imageContentType, imageOriginalFilename)
+        } else null
+        val createdReport = submissionRepository.create(report, image)
         eventBus.publish(
             WsEvent(
                 type = "report.created",

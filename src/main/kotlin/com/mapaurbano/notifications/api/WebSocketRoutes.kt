@@ -1,6 +1,7 @@
 package com.mapaurbano.notifications.api
 
 import com.mapaurbano.notifications.application.EventBus
+import com.mapaurbano.notifications.dto.WsEvent
 import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
 import io.ktor.server.websocket.webSocket
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.ktor.ext.inject
+import java.time.Instant
 
 fun Route.webSocketRoutes() {
     val eventBus by inject<EventBus>()
@@ -18,6 +20,16 @@ fun Route.webSocketRoutes() {
 
     authenticate("admin-session") {
         webSocket("/ws/admin") {
+            send(
+                Frame.Text(
+                    json.encodeToString(
+                        WsEvent(
+                            type = "connected",
+                            occurredAt = Instant.now().toString(),
+                        ),
+                    ),
+                ),
+            )
             val subscription = eventBus.subscribeAdmin().onEach { event ->
                 val eventText = json.encodeToString(event)
                 send(Frame.Text(eventText))
