@@ -409,3 +409,23 @@ check` finalizó correctamente.
 La constancia de entrega y el contrato esperado para la prueba conjunta se
 encuentran en `docs/ENTREGA_BACKEND_MAIN_2026-10-20.md`. Esta sección reemplaza
 las menciones anteriores que describen B01–B03 como pendientes del backend.
+
+## Actualización web — 21 de octubre de 2026
+
+El `main` de `Santy112/MapaUrbano-frontend-web` sigue en `4101b24`; no hubo
+cambios posteriores al corte anterior. La repetición local completó 8 pruebas y
+el build de producción tanto con Node 20.19.5 como con Node 24.19.0. El workflow
+remoto `39334403684` continúa rojo en la etapa de pruebas con código 3, aunque el
+fallo no se reprodujo localmente. Node 20 sigue fuera de los engines declarados
+por las dependencias Angular fijadas, por lo que CI debe migrar a Node 24 y volver
+a ejecutarse.
+
+Los desacoples funcionales web continúan abiertos: modelos mezclados, detalle e
+imagen sin consumir, asignación simulada, estadísticas y auditoría incompatibles,
+equipos ficticios, creación de categoría con campo extra, WebSocket sin conectar,
+paginación incompleta y pruebas sin aserciones de contrato. También se detectaron
+seis vulnerabilidades corregibles mediante `npm audit` en herramientas de
+desarrollo.
+
+El detalle actualizado y el plan listo para el equipo web están en
+`docs/AUDITORIA_WEB_2026-10-21.md`, que prevalece para el estado web actual.

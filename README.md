@@ -10,6 +10,8 @@ La **[constancia de auditoría integral](docs/CONSTANCIA_AUDITORIA_INTEGRAL_2026
 
 La **[auditoría vigente de los tres repositorios principales del 19 de octubre](docs/AUDITORIA_TRES_REPOSITORIOS_2026-10-19.md)** compara backend, Android y web en sus `main` actuales. El monorepo original quedó retirado del alcance salvo pedido expreso del usuario.
 
+La **[auditoría específica del frontend web del 21 de octubre](docs/AUDITORIA_WEB_2026-10-21.md)** verifica nuevamente el `main` web, sus pruebas, build, CI, dependencias y compatibilidad operación por operación con el backend publicado.
+
 La **[entrega del backend en `main` del 20 de octubre](docs/ENTREGA_BACKEND_MAIN_2026-10-20.md)** registra el corte preparado para la prueba conjunta, las 60 pruebas correctas y el contrato que deben consumir Android y web.
 
 La **[guía de Swagger y del contrato OpenAPI](docs/SWAGGER.md)** explica cómo probar la API desde `http://localhost:8080/swagger`, cómo autorizarse con el token ciudadano y cómo interpretar el estado real de cada endpoint.

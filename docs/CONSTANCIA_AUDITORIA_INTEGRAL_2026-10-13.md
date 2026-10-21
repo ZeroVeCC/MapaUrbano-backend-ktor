@@ -945,3 +945,31 @@ HTTPS/WSS, secretos, backup, observabilidad y E2E de los tres componentes.
 La constancia específica de este corte está en
 `docs/ENTREGA_BACKEND_MAIN_2026-10-20.md` y prevalece sobre las referencias que
 todavía describan las correcciones B01–B03 como una rama pendiente.
+
+## 23. Auditoría específica del frontend web — 21 de octubre de 2026
+
+Se verificó nuevamente el `main` remoto de
+`Santy112/MapaUrbano-frontend-web`. Continúa en `4101b24`, sin commits, pull
+requests ni issues nuevos desde el corte del 19 de octubre. El repositorio se
+revisó en modo de solo lectura y el monorepo original permaneció fuera del
+alcance.
+
+El mismo commit completó localmente 8 pruebas y el build de producción con Node
+20.19.5 y con Node 24.19.0. El último GitHub Actions `39334403684` continúa rojo:
+la instalación fue correcta y la etapa de pruebas terminó con código 3, pero ese
+fallo no se reprodujo hoy. Aun así, el workflow usa Node 20 mientras las
+dependencias fijadas de Angular 22 declaran Node 22.22.3 o 24.15 como mínimo. Se
+mantiene la corrección requerida de migrar CI a Node 24 y verificar un nuevo run
+verde.
+
+La auditoría confirma que persisten los desacoples ya informados: DTO único para
+resumen/detalle/mutación, detalle e imagen sin uso, asignación solo local,
+estadísticas y auditoría incompatibles, equipos ficticios, alta de categoría con
+campo extra, WebSocket sin conectar, paginación incompleta, errores insuficientes
+y pruebas meramente estructurales. `npm audit` agregó evidencia de seis
+vulnerabilidades corregibles en herramientas de desarrollo (tres altas, dos
+moderadas y una baja).
+
+El informe completo, la matriz funcional y el plan priorizado para el equipo web
+se registran en `docs/AUDITORIA_WEB_2026-10-21.md`. Este documento es el corte
+vigente para el frontend web cuando contradiga revisiones anteriores.
